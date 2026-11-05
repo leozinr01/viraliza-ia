@@ -21,6 +21,7 @@
     <span class="nav-h">Estúdio</span>
     <a href="/app" class="{% block nav_painel %}on{% endblock %}"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
     <a href="/app#lives" class="{% block nav_lives %}{% endblock %}"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>Lives e cortes</a>
+    <a href="/app/conexoes" class="{% block nav_conexoes %}{% endblock %}"><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
     <span class="nav-h">Suporte</span>
     <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
   </nav>
@@ -37,6 +38,12 @@
 <script>
 const ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
 const $ = s => document.querySelector(s), esc = VZ.esc, toast = VZ.toast;
+// links de VOD aceitos (a mesma regra existe no banco: lives_fonte_check)
+const PLATS = { twitch: 'Twitch', youtube: 'YouTube', kick: 'Kick' };
+const plataforma = u => /^https:\/\/(www\.|m\.)?twitch\.tv\/videos\/\d+/i.test(u) ? 'twitch'
+  : /^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?(.*&)?v=|live\/)|youtu\.be\/)[\w-]{11}/i.test(u) ? 'youtube'
+  : /^https:\/\/(www\.)?kick\.com\/([\w-]+\/videos|video)\/[\w-]+/i.test(u) ? 'kick' : null;
+const platTag = u => { const p = plataforma(u); return p ? `<span class="plat ${p}">${PLATS[p]}</span>` : ''; };
 const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 async function statusWorker() {
   const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();

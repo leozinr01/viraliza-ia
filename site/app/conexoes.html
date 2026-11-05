@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Conexões · Viraliza</title>
+<link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css?v=202611051541">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
+<script src="/assets/config.js?v=202611051541"></script>
+<script src="/assets/viraliza.js?v=202611051541"></script>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+  <a class="logo" href="/app"><img src="/assets/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
+  <nav class="nav">
+    <span class="nav-h">Estúdio</span>
+    <a href="/app" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
+    <a href="/app#lives" class=""><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>Lives e cortes</a>
+    <a href="/app/conexoes" class="on"><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
+    <span class="nav-h">Suporte</span>
+    <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
+  </nav>
+  <div class="side-foot">
+    <div class="wk" id="wk" title="O notebook é quem processa os vídeos"><i></i><div><b>Notebook</b><span>verificando...</span></div></div>
+    <div class="me"><span class="av" id="av"></span><div class="me-t"><b id="quem"></b><span id="mail"></span></div>
+      <button class="icon-btn" onclick="VZ.sair()" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg></button></div>
+  </div>
+</aside>
+<div class="main">
+
+<header class="pagebar"><div><div class="crumb">Estúdio <span>/</span> Conexões</div><h1>Conexões</h1>
+ <div class="meta">Conecte suas contas pra publicar os cortes direto daqui, com um clique.</div></div></header>
+<main class="wrap">
+<div class="cons" id="cons"></div>
+<p class="meta nota-cons">O Viraliza só publica quando você manda. Você pode desconectar a qualquer momento aqui ou nas configurações da própria rede.
+ Veja a <a href="/privacidade">Política de Privacidade</a>.</p>
+</main>
+
+</div>
+</div>
+<script>
+const ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
+const $ = s => document.querySelector(s), esc = VZ.esc, toast = VZ.toast;
+// links de VOD aceitos (a mesma regra existe no banco: lives_fonte_check)
+const PLATS = { twitch: 'Twitch', youtube: 'YouTube', kick: 'Kick' };
+const plataforma = u => /^https:\/\/(www\.|m\.)?twitch\.tv\/videos\/\d+/i.test(u) ? 'twitch'
+  : /^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?(.*&)?v=|live\/)|youtu\.be\/)[\w-]{11}/i.test(u) ? 'youtube'
+  : /^https:\/\/(www\.)?kick\.com\/([\w-]+\/videos|video)\/[\w-]+/i.test(u) ? 'kick' : null;
+const platTag = u => { const p = plataforma(u); return p ? `<span class="plat ${p}">${PLATS[p]}</span>` : ''; };
+const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+async function statusWorker() {
+  const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();
+  const on = data && data.visto_em && (Date.now() - new Date(data.visto_em)) < 90000;
+  $('#wk').classList.toggle('on', !!on);
+  $('#wk span').textContent = on ? 'Online, pronto pra processar' : 'Offline';
+  return on;
+}
+const PRONTO = VZ.exigirLogin().then(s => {
+  const m = s.user.user_metadata || {}, n = String(m.nome || m.full_name || m.name || s.user.email);
+  $('#quem').textContent = n.split(' ').slice(0, 2).join(' ');
+  $('#mail').textContent = s.user.email || '';
+  $('#av').textContent = n.trim().charAt(0).toUpperCase();
+  statusWorker(); setInterval(statusWorker, 15000);
+  return s;
+});
+</script>
+
+<script>
+const INFO = {
+  youtube: { nome: 'YouTube', desc: 'Shorts e o vídeo longo da live.', nota: 'Enquanto o app do Viraliza não for verificado pelo Google, os vídeos sobem como privados. É só trocar para público no YouTube Studio.' },
+  tiktok: { nome: 'TikTok', desc: 'Cortes verticais.', nota: 'Por enquanto o vídeo vai para os rascunhos do app do TikTok, já pronto. Você só toca em publicar.' },
+  instagram: { nome: 'Instagram', desc: 'Reels.', nota: 'Precisa ser uma conta profissional (Criador ou Empresa).' },
+};
+const LOGO = {
+  youtube: '<svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="4" fill="#ff0033" stroke="none"/><path d="m10 9.2 5 2.8-5 2.8z" fill="#fff" stroke="none"/></svg>',
+  tiktok: '<svg viewBox="0 0 24 24"><path d="M14 4v10.5a3.5 3.5 0 1 1-3-3.46M14 4c.4 2.3 2 3.8 4.5 4" stroke="#fff" stroke-width="2.2"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.6" stroke="#fff" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1" fill="#fff" stroke="none"/></svg>',
+};
+let CON = [];
+
+async function conectar(p, b) {
+  b.disabled = true; b.textContent = 'Abrindo...';
+  const { data, error } = await VZ.sb.functions.invoke('conectar', { body: { plataforma: p } });
+  if (error || !data || !data.url) { b.disabled = false; b.textContent = 'Conectar'; return toast('Não deu pra abrir a conexão. Tente de novo.'); }
+  location.href = data.url;
+}
+async function desconectar(id, nome) {
+  if (!confirm('Desconectar ' + nome + '? Você pode conectar de novo quando quiser.')) return;
+  const { error } = await VZ.sb.from('conexoes').delete().eq('id', id);
+  if (error) return toast(VZ.erroPt(error));
+  toast('Desconectado'); carregar();
+}
+function render() {
+  $('#cons').innerHTML = Object.entries(INFO).map(([p, i]) => {
+    const c = CON.find(x => x.plataforma === p);
+    return `<section class="panel con ${c ? 'ligada' : ''}">
+      <div class="con-h"><span class="con-logo ${p}">${LOGO[p]}</span><div><h2>${i.nome}</h2><p class="meta">${i.desc}</p></div></div>
+      ${c ? `<div class="con-conta">${c.conta_foto ? `<img src="${esc(c.conta_foto)}" alt="" referrerpolicy="no-referrer">` : `<span class="av">${esc((c.conta_nome || '?').charAt(0).toUpperCase())}</span>`}
+        <div><b>${esc(c.conta_nome || i.nome)}</b><small><i class="dot-ok"></i>Conectada em ${new Date(c.criado_em).toLocaleDateString('pt-BR')}</small></div></div>`
+        : `<div class="con-conta vazia">Nenhuma conta conectada</div>`}
+      <p class="hint">${i.nota}</p>
+      <div class="con-acts">${c ? `<button class="btn sec" onclick="desconectar('${c.id}','${esc(i.nome)}')">Desconectar</button><button class="btn sec" onclick="conectar('${p}', this)">Trocar conta</button>`
+        : `<button class="btn" onclick="conectar('${p}', this)">Conectar</button>`}</div>
+    </section>`;
+  }).join('');
+}
+async function carregar() {
+  const { data, error } = await VZ.sb.from('conexoes').select('id,plataforma,conta_nome,conta_foto,criado_em');
+  if (error) return toast(VZ.erroPt(error));
+  CON = data; render();
+}
+PRONTO.then(() => {
+  const q = new URLSearchParams(location.search);
+  if (q.get('ok')) toast((INFO[q.get('ok')] || {}).nome + ' conectado!');
+  if (q.get('erro')) toast(q.get('erro'));
+  if (q.toString()) history.replaceState(null, '', location.pathname);
+  render(); carregar();
+});
+</script>
+
+</body>
+</html>

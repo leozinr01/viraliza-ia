@@ -5,11 +5,13 @@ Fica ligado no notebook e faz o trabalho pesado que o site pede pelo Supabase:
   - processa os VODs da fila (baixa, corta, legenda)
   - sobe os vídeos pro Cloudflare R2 e grava os links no banco
   - apaga vídeos com mais de 7 dias (R2 e notebook)
+  - publica os cortes no YouTube, TikTok e Instagram das contas conectadas (redes.py)
 
 Uso:  python worker.py      (deixe a janela aberta)
 """
-import datetime as dt, json, os, re, shutil, signal, subprocess, sys, time, unicodedata
+import datetime as dt, json, os, re, shutil, signal, subprocess, sys, threading, time, unicodedata
 import boto3, requests
+import redes
 from dotenv import dotenv_values
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -184,6 +186,9 @@ class Fila:
     def ciclo(self):
         if self.job:
             return self.acompanhar()
+        # pedido de cancelar numa live que não está rodando (ex.: ainda estava na fila): só fecha
+        for l in self.db.get("lives", status="eq.cancelar", select="id"):
+            self.db.patch("lives", {"id": f"eq.{l['id']}"}, {"status": "cancelado", "detalhe": ""})
         fila = self.db.get("lives", status="eq.fila", order="criado_em.asc", limit=1)
         if fila:
             self.comecar(fila[0])
@@ -282,6 +287,104 @@ class Fila:
         matar(self.proc)
 
 
+# ------------------------------------------------------------------ publicação nas redes
+class Publicador:
+    """Envia os pedidos da tabela publicacoes, um por vez, numa thread própria
+    (um vídeo longo pode levar minutos pra subir e não pode travar o chat nem a fila)."""
+    MARCA = {"youtube": "shorts", "tiktok": "tiktok", "instagram": "reels"}  # coluna "postado" em cortes
+
+    def __init__(self):
+        self.db = Banco()  # sessão própria: a do loop principal não é thread-safe
+        self.parar = threading.Event()
+        self.aviso_tabela = False
+
+    def rodar(self):
+        try:  # se o worker caiu no meio de um envio, devolve pra fila
+            for l in self._get_seguro("publicacoes", status="eq.enviando", select="id"):
+                self.db.patch("publicacoes", {"id": f"eq.{l['id']}"}, {"status": "fila", "detalhe": "retomando"})
+        except requests.RequestException:
+            pass
+        while not self.parar.is_set():
+            try:
+                fila = self._get_seguro("publicacoes", status="eq.fila", order="criado_em.asc", limit=1)
+                if fila:
+                    self.publicar(fila[0])
+                    continue
+            except requests.RequestException as e:
+                log(f"publicação: sem conexão ({e.__class__.__name__})")
+            self.parar.wait(5)
+
+    def _get_seguro(self, tabela, **params):
+        try:
+            return self.db.get(tabela, **params)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:  # migração ainda não rodada
+                if not self.aviso_tabela:
+                    log("publicação desligada: rode supabase/migracao_publicacao.sql no Supabase")
+                    self.aviso_tabela = True
+                self.parar.wait(60)
+                return []
+            raise
+
+    def publicar(self, p):
+        pid, rede = p["id"], p["plataforma"]
+        upd = lambda **d: self.db.patch("publicacoes", {"id": f"eq.{pid}"}, d)
+        upd(status="enviando", detalhe="preparando", erro=None)
+        arquivo = None
+        try:
+            con = self.db.get("conexoes", user_id=f"eq.{p['user_id']}", plataforma=f"eq.{rede}", select="id,conta_id,conta_nome")
+            if not con:
+                raise redes.ErroRede(f"Nenhuma conta do {rede.title()} conectada. Conecte em Conexões.")
+            con = con[0]
+            tk = self.db.get("conexoes_tokens", conexao_id=f"eq.{con['id']}")[0]
+
+            def salvar(access, refresh, expira):
+                d = {"access_token": access, "expira_em": expira}
+                if refresh:
+                    d["refresh_token"] = refresh
+                self.db.patch("conexoes_tokens", {"conexao_id": f"eq.{con['id']}"}, d)
+                tk.update(d)
+
+            if p["corte_id"]:
+                v = self.db.get("cortes", id=f"eq.{p['corte_id']}", select="video_url,expira_em,titulo")[0]
+                url, curto = v["video_url"], True
+            else:
+                v = self.db.get("lives", id=f"eq.{p['live_id']}", select="longo_url,expira_em,titulo")[0]
+                url, curto = v["longo_url"], False
+            if not url or (v.get("expira_em") and dt.datetime.fromisoformat(v["expira_em"]) < dt.datetime.now(dt.timezone.utc)):
+                raise redes.ErroRede("O vídeo expirou (apagado depois de 7 dias).")
+            titulo, descricao = p.get("titulo") or v.get("titulo") or "", p.get("descricao") or ""
+            progresso = lambda t: upd(detalhe=t)
+            log(f"publicação {pid[:8]}: enviando pro {rede} (@{con['conta_nome']})")
+
+            if rede == "instagram":
+                link, nota = redes.instagram(tk, con["conta_id"], salvar, url, descricao or titulo, progresso)
+            else:
+                progresso("baixando o vídeo")
+                arquivo = os.path.join(TRAB, f"_pub_{pid}.mp4")
+                with requests.get(url, stream=True, timeout=(30, 600)) as r:
+                    r.raise_for_status()
+                    with open(arquivo, "wb") as f:
+                        for bloco in r.iter_content(1 << 20):
+                            f.write(bloco)
+                envio = redes.youtube if rede == "youtube" else redes.tiktok
+                link, nota = envio(tk, ENV, salvar, arquivo, titulo, descricao, p["privacidade"], curto, progresso)
+
+            upd(status="publicado", url=link, detalhe=nota or "")
+            if p["corte_id"]:
+                self.db.patch("cortes", {"id": f"eq.{p['corte_id']}"}, {self.MARCA[rede]: True})
+            else:
+                self.db.patch("lives", {"id": f"eq.{p['live_id']}"}, {"longo_postado": True})
+            log(f"publicação {pid[:8]}: PUBLICADA no {rede} {link or nota or ''}")
+        except Exception as e:
+            msg = str(e) if isinstance(e, redes.ErroRede) else f"Falha ao publicar: {e}"
+            upd(status="erro", erro=msg[:800], detalhe="")
+            log(f"publicação {pid[:8]}: ERRO {msg}")
+        finally:
+            if arquivo and os.path.exists(arquivo):
+                os.remove(arquivo)
+
+
 # ------------------------------------------------------------------ limpeza
 def limpar(db):
     """Apaga do R2 vídeos com mais de 7 dias e vídeos de lives que foram excluídas no site."""
@@ -316,6 +419,8 @@ def main():
     for l in db.patch("lives", {"status": "eq.processando"}, {"status": "fila", "detalhe": "retomando"}):
         log(f"live {l['id'][:8]}: retomando depois de reiniciar")
     grav, fila = Gravacoes(db), Fila(db)
+    pub = Publicador()
+    threading.Thread(target=pub.rodar, daemon=True).start()
     log("Worker do Viraliza ligado. Deixe esta janela aberta. (Ctrl+C para desligar)")
     ultimo_ping = ultima_limpeza = 0
     erros = 0
@@ -339,6 +444,7 @@ def main():
             time.sleep(3)
     except KeyboardInterrupt:
         log("Desligando... (gravações de chat e processamento em andamento serão interrompidos)")
+        pub.parar.set()
         grav.parar_tudo()
         fila.parar()
 

@@ -162,6 +162,54 @@ a.lv-t:hover b{color:var(--brand)}
 .dash-side .tg{font-size:13.5px}
 .dash-side .hint{font-size:12.5px;margin-top:12px}
 
+/* plataformas */
+.plat{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;vertical-align:1px;white-space:nowrap;background:var(--p3);color:var(--mut)}
+.plat::before{content:"";width:6px;height:6px;border-radius:2px;background:currentColor}
+.plat.twitch{background:rgba(145,70,255,.14);color:#b58cff}
+.plat.youtube{background:rgba(255,0,51,.13);color:#ff5c7a}
+.plat.kick{background:rgba(83,252,24,.11);color:#6cf53c}
+.plat.tiktok{background:rgba(37,244,238,.1);color:#5ef2ec}
+.plat.instagram{background:rgba(225,48,108,.13);color:#ff6fa3}
+.inp .plat{margin-right:8px}
+.lv-n b .plat{margin-right:7px}
+.plats{display:flex;gap:6px;margin-top:7px;opacity:.75}
+
+/* publicação nas redes */
+.pubs{display:flex;flex-direction:column;gap:4px}.pubs:empty{display:none}
+.pub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;font-weight:500;padding:4px 8px;border-radius:6px;background:var(--p2);color:var(--mut)}
+.pub a{color:inherit;text-decoration:none}.pub a:hover{text-decoration:underline}
+.pub.ok{background:var(--ok-a);color:var(--ok-t)}
+.pub.err{background:var(--err-a);color:var(--err-t)}.pub.err .link-btn{font-size:11.5px;color:var(--txt);padding:0;text-decoration:underline}
+.pub.on i{width:6px;height:6px;border-radius:50%;background:var(--brand);animation:pulse 1.2s infinite}
+.yt .pubs{margin-top:12px}
+.dlg{width:min(520px,calc(100vw - 32px));padding:0;border:1px solid var(--line2);border-radius:14px;background:var(--p1);color:var(--txt);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.dlg::backdrop{background:rgba(5,5,7,.7);backdrop-filter:blur(3px)}
+.dlg-h{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dlg-h h2{margin:0;font-size:15px}
+.dlg-b{padding:16px 18px}.dlg-b textarea{color:var(--txt)}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line);background:var(--side)}
+.pub-redes{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.tg.pr{padding:8px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg)}
+.tg.pr small{color:var(--mut);margin-left:auto}
+.tg.pr.off{cursor:default;justify-content:space-between}.tg.pr.off a{font-size:12px;color:var(--brand)}
+/* página de conexões */
+.cons{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;max-width:1100px}
+.con{padding:18px;display:flex;flex-direction:column;gap:14px}
+.con.ligada{border-color:rgba(34,197,94,.25)}
+.con-h{display:flex;align-items:center;gap:12px}.con-h h2{margin:0;font-size:15px}.con-h .meta{margin:0}
+.con-logo{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;flex:none}
+.con-logo svg{width:24px;height:24px}
+.con-logo.youtube{background:#1f1012}.con-logo.tiktok{background:#111;border:1px solid var(--line2)}
+.con-logo.instagram{background:linear-gradient(45deg,#f9a825,#e1306c 50%,#833ab4)}
+.con-conta{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.con-conta img,.con-conta .av{width:32px;height:32px;border-radius:50%;object-fit:cover}
+.con-conta b{display:block;font-weight:600}.con-conta small{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ok-t)}
+.con-conta.vazia{color:var(--dim);justify-content:center;border-style:dashed}
+.dot-ok{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.con .hint{margin:0}
+.con-acts{display:flex;gap:8px;margin-top:auto}.con-acts .btn{flex:1}
+.nota-cons{margin-top:20px;max-width:700px}.nota-cons a{color:var(--brand)}
+
 /* página da live */
 .card{background:var(--p1);border:1px solid var(--line);border-radius:var(--r);padding:18px}
 .back{color:var(--mut);text-decoration:none}.back:hover{color:var(--txt)}

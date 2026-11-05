@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Política de Privacidade · Viraliza</title>
+<meta name="description" content="Viraliza transforma sua live em cortes virais para TikTok, Shorts e Reels, com legenda automática.">
+<link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=202611051541">
+<style>
+.legal{max-width:760px;margin:0 auto;padding:120px 24px 80px}.legal h1{font-size:clamp(30px,5vw,44px);margin:12px 0 6px}
+.legal h2{font-size:20px;margin:36px 0 10px}.legal p,.legal li{color:var(--mut);line-height:1.7}.legal li{margin:6px 0}
+.legal a{color:var(--txt)}.legal .upd{color:var(--mut);font-size:14px}.legal b{color:var(--txt)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
+<script src="/assets/config.js?v=202611051541"></script>
+<script src="/assets/viraliza.js?v=202611051541"></script>
+</head>
+<body class="">
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="32" height="32"><span>viraliza</span></a>
+  <nav class="nav-links">
+    <a href="/#como">Como funciona</a>
+    <a href="/#recursos">Recursos</a>
+    <a href="/contato">Contato</a>
+  </nav>
+  <div class="nav-cta">
+    <a class="link" href="/entrar" data-anon>Entrar</a>
+    <a class="btn" href="/entrar?modo=criar" data-anon>Começar grátis</a>
+    <a class="btn" href="/app" data-auth hidden>Abrir painel</a>
+  </div>
+</header>
+
+
+<main class="legal">
+<span class="eyebrow">Legal</span>
+<h1>Política de Privacidade</h1>
+<p class="upd">Atualizada em 5 de novembro de 2026</p>
+
+<p>Esta política explica quais dados o Viraliza coleta, como usa e como você pode apagá-los. O Viraliza é uma ferramenta que gera cortes das suas lives e, se você quiser, publica esses cortes nas suas contas do YouTube, TikTok e Instagram.</p>
+
+<h2>1. Dados que coletamos</h2>
+<ul>
+<li><b>Conta do Viraliza:</b> nome, e-mail e foto (se você entrar com o Google), usados para identificar você.</li>
+<li><b>Lives que você envia:</b> o link do VOD, o chat gravado da sua live e os cortes gerados a partir deles.</li>
+<li><b>Contas conectadas</b> (só se você conectar): o ID, o nome e a foto do canal ou perfil, e as chaves de acesso que a rede fornece para publicarmos em seu nome.</li>
+<li><b>Formulário de contato:</b> nome, e-mail e a mensagem que você enviar.</li>
+</ul>
+
+<h2>2. Como usamos as contas conectadas</h2>
+<p>Quando você conecta o YouTube, o TikTok ou o Instagram, o Viraliza usa o acesso <b>somente para publicar os vídeos que você mandar publicar</b>, com o título, a legenda e a visibilidade que você escolher, e para mostrar qual conta está conectada. Nunca publicamos nada sem uma ação sua, não lemos suas mensagens, seguidores ou outros vídeos, e não vendemos nem compartilhamos esses dados com terceiros.</p>
+<p>O uso e a transferência, pelo Viraliza, de informações recebidas das APIs do Google seguem a <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Política de Dados do Usuário dos Serviços de API do Google</a>, incluindo os requisitos de Uso Limitado.</p>
+<p>Ao publicar no YouTube pelo Viraliza, você também concorda com os <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">Termos de Serviço do YouTube</a>, e a <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Política de Privacidade do Google</a> se aplica. O mesmo vale para os termos e políticas do <a href="https://www.tiktok.com/legal/privacy-policy" target="_blank" rel="noopener">TikTok</a> e do <a href="https://privacycenter.instagram.com/policy" target="_blank" rel="noopener">Instagram</a>.</p>
+
+<h2>3. Onde os dados ficam</h2>
+<ul>
+<li>Conta, lives e conexões ficam no banco de dados do Supabase. As chaves de acesso das redes ficam numa área que só o servidor do Viraliza lê, nunca no seu navegador.</li>
+<li>Os vídeos gerados ficam no Cloudflare R2 e são <b>apagados automaticamente depois de 7 dias</b>.</li>
+</ul>
+
+<h2>4. Por quanto tempo guardamos</h2>
+<p>Os vídeos ficam 7 dias. Os demais dados ficam enquanto sua conta existir. As chaves de acesso de uma rede são apagadas na hora em que você a desconecta.</p>
+
+<h2>5. Como apagar seus dados</h2>
+<ul>
+<li><b>Desconectar uma rede:</b> no painel, em <a href="/app/conexoes">Conexões</a>, clique em "Desconectar". Também dá para revogar o acesso direto na rede: <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google</a>, TikTok (Configurações → Segurança → Apps e serviços) ou Instagram (Configurações → Apps e sites).</li>
+<li><b>Apagar uma live e os cortes:</b> no painel, clique no ícone de lixeira da live.</li>
+<li><b>Apagar sua conta e todos os dados:</b> peça pela página de <a href="/contato">contato</a> usando o e-mail da sua conta. Apagamos tudo em até 30 dias e confirmamos por e-mail.</li>
+</ul>
+
+<h2>6. Seus direitos (LGPD)</h2>
+<p>Você pode pedir acesso, correção, portabilidade ou exclusão dos seus dados, e revogar o consentimento a qualquer momento, pela página de <a href="/contato">contato</a>.</p>
+
+<h2>7. Mudanças</h2>
+<p>Se esta política mudar, atualizamos a data no topo da página. Mudanças importantes também são avisadas no painel.</p>
+</main>
+
+
+<footer class="foot">
+  <div class="foot-in">
+    <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
+    <p>Da live pro feed, sem editar nada.</p>
+    <nav><a href="/">Início</a><a href="/#como">Como funciona</a><a href="/contato">Contato</a><a href="/privacidade">Privacidade</a><a href="/termos">Termos</a><a href="/entrar">Entrar</a></nav>
+    <small>© 2026 Viraliza</small>
+  </div>
+</footer>
+
+<script src="/assets/site.js?v=202611051541"></script>
+
+</body>
+</html>

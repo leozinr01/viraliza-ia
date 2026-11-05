@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611051422">
+<link rel="stylesheet" href="/assets/app.css?v=202611051541">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611051422"></script>
-<script src="/assets/viraliza.js?v=202611051422"></script>
+<script src="/assets/config.js?v=202611051541"></script>
+<script src="/assets/viraliza.js?v=202611051541"></script>
 </head>
 <body>
 <div class="shell">
@@ -21,6 +21,7 @@
     <span class="nav-h">Estúdio</span>
     <a href="/app" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
     <a href="/app#lives" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>Lives e cortes</a>
+    <a href="/app/conexoes" class=""><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
     <span class="nav-h">Suporte</span>
     <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
   </nav>
@@ -38,19 +39,36 @@
 <section class="card yt" id="yt" hidden><video id="ytv" controls preload="metadata"></video>
  <div><span class="tag yt-tag">YouTube</span><h2>Vídeo longo</h2>
  <p class="meta">Os melhores momentos da live em ordem, pronto pra subir no YouTube.</p>
- <div class="row" style="margin-top:16px"><a class="btn" id="yt-dl"></a>
- <button class="rd" id="yt-post" style="flex:none;padding:10px 14px">Marcar como postado</button></div></div></section>
+ <div class="row" style="margin-top:16px"><button class="btn" id="yt-pub">Publicar no YouTube</button><a class="btn sec" id="yt-dl"></a>
+ <button class="rd" id="yt-post" style="flex:none;padding:0 14px">Marcar como postado</button></div>
+ <div class="pubs" id="yt-pubs"></div></div></section>
 <div class="sec-h"><h2>Cortes verticais <span class="meta" id="cnt"></span></h2>
 <div class="tabs" id="tabs"><button class="on" data-f="todos">Todos</button><button data-f="pend">Falta postar</button><button data-f="post">Postados</button><button data-f="desc">Descartados</button></div></div>
 <div class="grid" id="grid"></div>
 <p class="meta" id="aviso" style="margin-top:20px"></p>
 </main>
+<dialog class="dlg" id="dlg-pub"><form method="dialog" id="f-pub">
+ <div class="dlg-h"><h2 id="pub-t">Publicar corte</h2><button class="icon-btn" value="x" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+ <div class="dlg-b">
+  <label class="f">Publicar em</label><div class="pub-redes" id="pub-redes"></div>
+  <div class="fld"><label class="f" for="pub-titulo">Título <small class="meta">(YouTube, até 100 caracteres)</small></label><input type="text" id="pub-titulo" maxlength="100"></div>
+  <div class="fld"><label class="f" for="pub-desc">Legenda / descrição</label><textarea id="pub-desc" rows="4" maxlength="2200"></textarea></div>
+  <div class="fld"><label class="f" for="pub-priv">Visibilidade</label><select id="pub-priv"><option value="public">Público</option><option value="unlisted">Não listado (só YouTube)</option><option value="private">Privado</option></select></div>
+ </div>
+ <div class="dlg-f"><button class="btn sec" value="x">Cancelar</button><button class="btn" id="pub-ok" value="ok">Publicar</button></div>
+</form></dialog>
 
 </div>
 </div>
 <script>
 const ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
 const $ = s => document.querySelector(s), esc = VZ.esc, toast = VZ.toast;
+// links de VOD aceitos (a mesma regra existe no banco: lives_fonte_check)
+const PLATS = { twitch: 'Twitch', youtube: 'YouTube', kick: 'Kick' };
+const plataforma = u => /^https:\/\/(www\.|m\.)?twitch\.tv\/videos\/\d+/i.test(u) ? 'twitch'
+  : /^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?(.*&)?v=|live\/)|youtu\.be\/)[\w-]{11}/i.test(u) ? 'youtube'
+  : /^https:\/\/(www\.)?kick\.com\/([\w-]+\/videos|video)\/[\w-]+/i.test(u) ? 'kick' : null;
+const platTag = u => { const p = plataforma(u); return p ? `<span class="plat ${p}">${PLATS[p]}</span>` : ''; };
 const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 async function statusWorker() {
   const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();
@@ -98,7 +116,8 @@ function card(c) {
   <div class="vid">${exp ? '<div class="expirado">Vídeo expirou<br>(apagado depois de 7 dias)</div>' : `<video src="${esc(c.video_url)}" controls preload="metadata"></video>`}
   <div class="tags"><span class="tag">#${c.n} · ${hms(c.inicio)}</span>${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : `<span class="tag">🔥 ${(c.nota || 0).toFixed(1)}</span>`}</div></div>
   <div class="body"><textarea rows="2" data-k="titulo" maxlength="300">${esc(c.titulo)}</textarea>
-  ${exp ? '' : `<a class="btn full" href="${esc(c.download_url)}">${ICON_DL} Baixar MP4</a>`}
+  ${exp ? '' : `<div class="inline"><button class="btn" style="flex:1" data-a="pub">Publicar</button><a class="btn sec" href="${esc(c.download_url)}" title="Baixar MP4" aria-label="Baixar MP4">${ICON_DL}</a></div>`}
+  <div class="pubs" data-pubs></div>
   <div class="redes">${Object.entries(REDES).map(([r, l]) => `<button class="rd ${c[r] ? 'on' : ''}" data-r="${r}">${c[r] ? '✓ ' : ''}${l}</button>`).join('')}</div>
   <div class="minis"><button class="btn sec sm" data-a="copiar">Copiar título</button><button class="btn sec sm" data-a="desc">${c.descartado ? 'Restaurar' : 'Descartar'}</button></div>
   </div></article>`;
@@ -110,13 +129,85 @@ $('#grid').addEventListener('click', ev => {
     const v = !c[b.dataset.r]; salvar(c, { [b.dataset.r]: v });
     b.classList.toggle('on', v); b.textContent = (v ? '✓ ' : '') + REDES[b.dataset.r];
     if (v) toast('Marcado como postado no ' + REDES[b.dataset.r]);
-  } else if (b.dataset.a == 'copiar') { navigator.clipboard.writeText(el.querySelector('textarea').value); toast('Título copiado'); }
+  } else if (b.dataset.a == 'pub') abrirPub(c);
+  else if (b.dataset.a == 'reenviar') reenviar(b.dataset.id);
+  else if (b.dataset.a == 'copiar') { navigator.clipboard.writeText(el.querySelector('textarea').value); toast('Título copiado'); }
   else if (b.dataset.a == 'desc') { const v = !c.descartado; salvar(c, { descartado: v }); el.classList.toggle('descartado', v); b.textContent = v ? 'Restaurar' : 'Descartar'; }
   filtrar();
 });
 $('#grid').addEventListener('change', ev => {
   if (ev.target.dataset.k) { salvar(porN(ev.target.closest('.ct').dataset.n), { titulo: ev.target.value }); toast('Título salvo'); }
 });
+
+// ---------- publicação direta nas redes (o notebook envia; ver redes.py)
+const PUB_REDES = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram' };
+const MARCA = { youtube: 'shorts', tiktok: 'tiktok', instagram: 'reels' };
+let CONS = [], PUBS = [], alvo = null;
+const el = c => document.querySelector(`.ct[data-n="${c.n}"]`);
+
+function abrirPub(c) {  // c = corte, ou null = vídeo longo
+  alvo = c;
+  const redes = c ? Object.keys(PUB_REDES) : ['youtube'];
+  $('#pub-t').textContent = c ? `Publicar corte #${c.n}` : 'Publicar vídeo longo';
+  $('#pub-redes').innerHTML = redes.map(r => {
+    const con = CONS.find(x => x.plataforma === r);
+    return con ? `<label class="tg pr"><input type="checkbox" value="${r}" checked><i></i><span class="plat ${r}">${PUB_REDES[r]}</span><small>${esc(con.conta_nome)}</small></label>`
+               : `<span class="tg pr off"><span class="plat ${r}">${PUB_REDES[r]}</span><a href="/app/conexoes">Conectar</a></span>`;
+  }).join('');
+  const t = c ? (el(c).querySelector('textarea').value || c.titulo || '') : (LIVE.titulo || '');
+  $('#pub-titulo').value = t.replace(/\s#\S+/g, '').trim().slice(0, 100);
+  $('#pub-desc').value = t;
+  $('#pub-ok').disabled = !redes.some(r => CONS.find(x => x.plataforma === r));
+  $('#dlg-pub').showModal();
+}
+$('#f-pub').addEventListener('submit', async ev => {
+  if (!ev.submitter || ev.submitter.value !== 'ok') return;
+  const redes = [...document.querySelectorAll('#pub-redes input:checked')].map(i => i.value);
+  if (!redes.length) { ev.preventDefault(); return toast('Escolha pelo menos uma rede'); }
+  const base = { titulo: $('#pub-titulo').value.trim().slice(0, 100) || null, descricao: $('#pub-desc').value.trim() || null, privacidade: $('#pub-priv').value };
+  const linhas = redes.map(r => ({ ...base, plataforma: r, ...(alvo ? { corte_id: alvo.id } : { live_id: ID }) }));
+  const { error } = await VZ.sb.from('publicacoes').insert(linhas);
+  if (error) return toast(VZ.erroPt(error));
+  toast(redes.length > 1 ? 'Enviando pras redes...' : 'Enviando pro ' + PUB_REDES[redes[0]] + '...');
+  carregarPubs();
+});
+async function reenviar(id) {
+  const p = PUBS.find(x => x.id === id); if (!p) return;
+  const { error } = await VZ.sb.from('publicacoes').insert({ plataforma: p.plataforma, corte_id: p.corte_id, live_id: p.live_id, titulo: p.titulo, descricao: p.descricao, privacidade: p.privacidade });
+  if (error) return toast(VZ.erroPt(error));
+  await VZ.sb.from('publicacoes').delete().eq('id', id);
+  toast('Tentando de novo...'); carregarPubs();
+}
+function chips(lista) {
+  const ult = {};  // só o pedido mais recente de cada rede
+  lista.forEach(p => { if (!ult[p.plataforma] || p.criado_em > ult[p.plataforma].criado_em) ult[p.plataforma] = p; });
+  return Object.values(ult).map(p => {
+    const n = PUB_REDES[p.plataforma];
+    if (p.status === 'publicado') return `<span class="pub ok" title="${esc(p.detalhe || '')}">${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">✓ ${n} · ver post</a>` : `✓ ${n}${p.detalhe ? ' · nos rascunhos' : ''}`}</span>`;
+    if (p.status === 'erro') return `<span class="pub err" title="${esc(p.erro || '')}">${n}: ${esc((p.erro || 'erro').slice(0, 70))} <button class="link-btn" data-a="reenviar" data-id="${p.id}">tentar de novo</button></span>`;
+    return `<span class="pub on"><i></i>${n} · ${esc(p.status === 'fila' ? 'na fila' : p.detalhe || 'enviando')}</span>`;
+  }).join('');
+}
+async function carregarPubs() {
+  const ids = CS.map(c => c.id);
+  const q = VZ.sb.from('publicacoes').select('*').order('criado_em');
+  const { data, error } = await (ids.length ? q.or(`live_id.eq.${ID},corte_id.in.(${ids.join(',')})`) : q.eq('live_id', ID));
+  if (error) return;
+  const antes = Object.fromEntries(PUBS.map(p => [p.id, p.status]));
+  PUBS = data;
+  PUBS.forEach(p => {  // acabou de publicar: marca como postado na tela também
+    if (p.status !== 'publicado' || !antes[p.id] || antes[p.id] === 'publicado') return;
+    const c = CS.find(x => x.id === p.corte_id), m = MARCA[p.plataforma];
+    if (c) { c[m] = true; const b = el(c)?.querySelector(`[data-r="${m}"]`); if (b) { b.classList.add('on'); b.textContent = '✓ ' + REDES[m]; } }
+    else if (p.live_id) { LIVE.longo_postado = true; $('#yt-post').classList.add('on'); $('#yt-post').textContent = '✓ Postado no YouTube'; }
+    toast('Publicado no ' + PUB_REDES[p.plataforma] + '!');
+  });
+  CS.forEach(c => { const box = el(c)?.querySelector('[data-pubs]'); if (box) box.innerHTML = chips(PUBS.filter(p => p.corte_id === c.id)); });
+  $('#yt-pubs').innerHTML = chips(PUBS.filter(p => p.live_id === ID));
+  filtrar();
+}
+$('#yt-pub').onclick = () => abrirPub(null);
+$('#yt-pubs').addEventListener('click', ev => { const b = ev.target.closest('[data-a="reenviar"]'); if (b) reenviar(b.dataset.id); });
 
 PRONTO.then(async () => {
   if (!ID) return location.replace('/app');
@@ -128,7 +219,7 @@ PRONTO.then(async () => {
   if (!l.data) { $('#titulo').textContent = 'Live não encontrada'; return; }
   LIVE = l.data; CS = c.data;
   document.title = (LIVE.titulo || 'Live') + ' · Viraliza';
-  $('#titulo').textContent = LIVE.titulo || 'Live ' + LIVE.fonte.split('/').pop();
+  $('#titulo').textContent = LIVE.titulo || 'Live ' + LIVE.fonte.split(/[/=]/).pop();
   $('#sub').textContent = [LIVE.canal, new Date(LIVE.criado_em).toLocaleString('pt-BR'), CS.length + ' cortes'].filter(Boolean).join(' · ');
   if (LIVE.longo_url && !expirou(LIVE.expira_em)) {
     $('#yt').hidden = false; $('#ytv').src = LIVE.longo_url;
@@ -143,6 +234,10 @@ PRONTO.then(async () => {
   }
   if (LIVE.expira_em) $('#aviso').textContent = 'Os vídeos ficam disponíveis até ' + new Date(LIVE.expira_em).toLocaleString('pt-BR') + '. Baixe antes disso.';
   $('#grid').innerHTML = CS.map(card).join(''); filtrar();
+  const con = await VZ.sb.from('conexoes').select('plataforma,conta_nome');
+  CONS = con.data || [];
+  carregarPubs();
+  setInterval(() => { if (PUBS.some(p => ['fila', 'enviando'].includes(p.status))) carregarPubs(); }, 4000);
 });
 </script>
 
