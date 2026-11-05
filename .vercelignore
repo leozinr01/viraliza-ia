@@ -1,0 +1,7 @@
+# A Vercel só publica o site estático (pasta site/). O resto roda no notebook.
+*.py
+requirements.txt
+web/
+site_src/
+supabase/
+COMO_USAR.txt
