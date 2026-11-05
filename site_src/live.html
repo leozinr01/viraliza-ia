@@ -1,8 +1,8 @@
 {% extends "base_app.html" %}
 {% block titulo %}Cortes · Viraliza{% endblock %}
-{% block nav_painel %}{% endblock %}{% block nav_lives %}on{% endblock %}
+
 {% block conteudo %}
-<header class="pagebar"><div><div class="crumb"><a href="/app">Estúdio</a> <span>/</span> <a href="/app#lives">Lives e cortes</a></div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div>
+<header class="pagebar"><div><div class="crumb"><a href="/app">Estúdio</a> <span>/</span> <a href="/app#lives-h">Lives recentes</a></div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div>
  <a class="btn sec" href="/app"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Voltar</a></header>
 <main class="wrap">
 <section class="card yt" id="yt" hidden><video id="ytv" controls preload="metadata"></video>
@@ -53,7 +53,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
 });
 function card(c) {
   const exp = expirou(c.expira_em) || !c.video_url;
-  return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}">
+  return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}" id="c${c.n}">
   <div class="vid">${exp ? '<div class="expirado">Vídeo expirou<br>(apagado depois de 7 dias)</div>' : `<video src="${esc(c.video_url)}" controls preload="metadata"></video>`}
   <div class="tags"><span class="tag">#${c.n} · ${hms(c.inicio)}</span>${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : `<span class="tag">🔥 ${(c.nota || 0).toFixed(1)}</span>`}</div></div>
   <div class="body"><textarea rows="2" data-k="titulo" maxlength="300">${esc(c.titulo)}</textarea>
@@ -175,6 +175,8 @@ PRONTO.then(async () => {
   }
   if (LIVE.expira_em) $('#aviso').textContent = 'Os vídeos ficam disponíveis até ' + new Date(LIVE.expira_em).toLocaleString('pt-BR') + '. Baixe antes disso.';
   $('#grid').innerHTML = CS.map(card).join(''); filtrar();
+  const alvoN = location.hash.match(/^#c(\d+)$/), alvoEl = alvoN && $('#c' + alvoN[1]);
+  if (alvoEl) { alvoEl.hidden = false; alvoEl.scrollIntoView({ block: 'center' }); alvoEl.classList.add('foco'); }
   const con = await VZ.sb.from('conexoes').select('plataforma,conta_nome');
   CONS = con.data || [];
   carregarPubs();

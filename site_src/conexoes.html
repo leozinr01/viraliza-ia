@@ -27,7 +27,17 @@ let CON = [];
 async function conectar(p, b) {
   b.disabled = true; b.textContent = 'Abrindo...';
   const { data, error } = await VZ.sb.functions.invoke('conectar', { body: { plataforma: p } });
-  if (error || !data || !data.url) { b.disabled = false; b.textContent = 'Conectar'; return toast('Não deu pra abrir a conexão. Tente de novo.'); }
+  if (error || !data || !data.url) {
+    b.disabled = false; b.textContent = 'Conectar';
+    let msg = (data && data.erro) || '';
+    if (error && error.context && typeof error.context.json === 'function') {
+      const st = error.context.status;
+      msg = await error.context.json().then(d => d.erro || d.message || '').catch(() => '');
+      if (st === 404) msg = 'O serviço de conexão ainda não foi publicado no servidor.';
+    } else if (error) msg = 'Sem resposta do servidor. Confira sua internet.';
+    console.error('conectar', p, error || data);
+    return toast('Não deu pra abrir a conexão' + (msg ? ': ' + msg : '. Tente de novo.'));
+  }
   location.href = data.url;
 }
 async function desconectar(id, nome) {

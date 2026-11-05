@@ -1,53 +1,96 @@
 {% extends "base_app.html" %}
 {% block conteudo %}
-<header class="pagebar"><div><div class="crumb">Estúdio <span>/</span> Visão geral</div><h1>Painel de criação</h1></div>
- <button class="btn" onclick="$('#fonte').focus()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo processamento</button></header>
-<main class="wrap">
-<div class="stats">
- <div class="stat"><span class="stat-ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg></span><div><div class="lbl">Lives processadas</div><div class="num" id="s-lives">0</div></div></div>
- <div class="stat"><span class="stat-ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg></span><div><div class="lbl">Cortes gerados</div><div class="num" id="s-cortes">0</div></div></div>
- <div class="stat"><span class="stat-ic ok"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><div><div class="lbl">Postados</div><div class="num" id="s-post">0</div></div></div>
- <div class="stat"><span class="stat-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div><div class="lbl">Falta postar</div><div class="num" id="s-fila">0</div></div></div>
-</div>
-<div class="dash">
- <section class="panel dash-main" id="lives-h">
-  <div class="panel-h"><div><h2>Lives e cortes</h2><p class="meta">Os vídeos ficam disponíveis por 7 dias.</p></div></div>
-  <div id="lives"></div>
- </section>
- <aside class="dash-side">
-  <section class="panel">
-   <div class="panel-h"><div><span class="step">Etapa 1</span><h2>Gravar o chat</h2></div><span class="chip" id="chip-chat">Parado</span></div>
-   <div class="panel-b">
-    <div class="live-st"><div class="big-dot" id="dot"></div><div style="flex:1;min-width:0"><b id="st-chat">Parado</b><div class="meta" id="st-chat2">Inicie antes de entrar ao vivo</div></div></div>
-    <label class="f" for="canal">Canal na Twitch</label>
-    <div class="inline"><div class="inp"><span class="pre">twitch.tv/</span><input type="text" id="canal" placeholder="seu_canal" maxlength="40"></div>
-    <button class="btn" id="b-chat">Iniciar gravação</button></div>
-    <p class="hint">Mande <b>#corte</b> no chat pelo celular pra garantir um momento.</p>
+<main class="dash">
+<header class="dtop">
+ <div class="dtop-t">
+  <p class="ola">Bem-vindo de volta<span id="ola-nome"></span>! <span aria-hidden="true">👋</span></p>
+  <h1>Painel de criação</h1>
+  <p class="meta">Gerencie suas lives, cortes e publicações de forma simples.</p>
+ </div>
+ <button class="btn btn-lg" onclick="aba('cortes', true)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo processamento<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+</header>
+
+<section class="kpis" aria-label="Resumo">
+ <div class="kpi c1"><span class="kpi-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/></svg></span>
+  <div class="kpi-t"><span class="lbl">Lives processadas</span><div class="kpi-v"><b class="num" id="s-lives">0</b><span class="dl" id="d-lives"></span></div></div><svg class="spark" id="g-lives" viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+ <div class="kpi c2"><span class="kpi-ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg></span>
+  <div class="kpi-t"><span class="lbl">Cortes gerados</span><div class="kpi-v"><b class="num" id="s-cortes">0</b><span class="dl" id="d-cortes"></span></div></div><svg class="spark" id="g-cortes" viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+ <div class="kpi c3"><span class="kpi-ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+  <div class="kpi-t"><span class="lbl">Postados</span><div class="kpi-v"><b class="num" id="s-post">0</b><span class="dl" id="d-post"></span></div></div><svg class="spark" id="g-post" viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+ <div class="kpi c4"><span class="kpi-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+  <div class="kpi-t"><span class="lbl">Falta postar</span><div class="kpi-v"><b class="num" id="s-fila">0</b><span class="dl" id="d-fila"></span></div></div><svg class="spark" id="g-fila" viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+</section>
+
+<div class="linha2">
+ <section class="dcard hero" id="acao">
+  <svg class="hero-bg" viewBox="0 0 200 160" aria-hidden="true"><rect x="20" y="58" width="160" height="96" rx="14"/><path d="m24 30 150-26 6 34-150 26z"/><path d="m60 24 18 32M104 16l18 32M148 9l18 32"/></svg>
+  <div class="hero-b">
+   <h2>Gravar ou fazer um corte?</h2>
+   <p class="meta">Comece agora e deixe a mágica acontecer <span aria-hidden="true">✨</span></p>
+   <div class="seg" role="tablist">
+    <button role="tab" data-t="chat" class="on">Gravar o chat<span class="chip" id="chip-chat">Parado</span></button>
+    <button role="tab" data-t="cortes">Gerar cortes</button>
    </div>
-  </section>
-  <section class="panel">
-   <div class="panel-h"><div><span class="step">Etapa 2</span><h2>Gerar os cortes</h2></div></div>
-   <div class="panel-b">
-    <div class="fld"><label class="f" for="fonte">Link do VOD</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><input type="text" id="fonte" placeholder="Cole o link da Twitch, YouTube ou Kick"><span class="plat" id="plat-fonte" hidden></span></div>
-     <div class="plats"><span class="plat twitch">Twitch</span><span class="plat youtube">YouTube</span><span class="plat kick">Kick</span></div></div>
-    <div class="fld"><label class="f" for="selchat">Chat gravado</label><select id="selchat"></select></div>
+   <div class="pane" data-p="chat">
+    <p class="status-l"><i class="big-dot" id="dot"></i><b id="st-chat">Parado</b><span class="meta" id="st-chat2">Inicie antes de entrar ao vivo</span></p>
+    <div class="inline"><div class="inp"><span class="pre">twitch.tv/</span><input type="text" id="canal" placeholder="seu_canal" maxlength="40" aria-label="Canal na Twitch"></div>
+     <button class="btn out" id="b-chat">Iniciar gravação</button></div>
+    <p class="hint">Durante a live, mande <b>#corte</b> no chat pra marcar um momento.</p>
+   </div>
+   <div class="pane" data-p="cortes" hidden>
+    <div class="inp"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><input type="text" id="fonte" placeholder="Cole o link do VOD da Twitch, YouTube ou Kick" aria-label="Link do VOD"><span class="plat" id="plat-fonte" hidden></span></div>
+    <div class="inline"><select id="selchat" aria-label="Chat gravado"></select><button class="btn out" id="b-proc">Gerar cortes</button></div>
     <div class="opts">
-     <label class="tg"><input type="checkbox" id="teste"><i></i>Teste rápido <small>(10 min)</small></label>
+     <label class="tg"><input type="checkbox" id="teste"><i></i>Teste rápido <small>10 min</small></label>
      <label class="tg"><input type="checkbox" id="semlongo"><i></i>Sem vídeo longo</label>
     </div>
-    <button class="btn full" id="b-proc">Gerar cortes</button>
-    <div class="fila" id="fila"></div>
    </div>
-  </section>
- </aside>
+  </div>
+ </section>
+
+ <section class="dcard ult">
+  <div class="dcard-h"><span class="dcard-ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg></span><h2>Seus últimos cortes</h2>
+   <a class="ver" href="/app/cortes">Ver todos<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+  <div id="ultimos"></div>
+ </section>
 </div>
+
+<section class="dcard" id="andamento" hidden>
+ <div class="dcard-h"><span class="dcard-ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></span><h2>Em andamento</h2><span class="meta">O notebook está processando agora</span></div>
+ <div class="fila" id="fila"></div>
+</section>
+
+ <section class="dcard" id="lives-h">
+  <div class="dcard-h"><span class="dcard-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/></svg></span><h2>Suas lives recentes</h2>
+   <button class="ver" id="ver-todas" hidden>Ver todas<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  <div id="lives"></div>
+ </section>
 </main>
 {% endblock %}
 {% block scripts %}
 <script>
 const ETAPAS = ["Baixando o VOD","Analisando o áudio","Lendo o chat","Escolhendo momentos","Gerando cortes","Vídeo longo","Enviando"];
-let G = [], L = [], C = [], primeira = true;
+const IC_VIDEO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>';
+const IC_LIXO = '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+const IC_CAL = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+let G = [], L = [], C = [], primeira = true, todas = false;
 try { $('#canal').value = localStorage.getItem('vz_canal') || ''; } catch (e) {}
+PRONTO.then(s => {
+  const m = s.user.user_metadata || {}, n = String(m.nome || m.full_name || m.name || '').trim().split(' ')[0];
+  if (n) $('#ola-nome').textContent = ', ' + n;
+});
+
+// abas do cartão "Gravar ou fazer um corte?"
+function aba(t, foco) {
+  document.querySelectorAll('.seg button').forEach(b => { b.classList.toggle('on', b.dataset.t === t); b.setAttribute('aria-selected', b.dataset.t === t); });
+  document.querySelectorAll('.pane').forEach(p => p.hidden = p.dataset.p !== t);
+  try { localStorage.setItem('vz_aba', t); } catch (e) {}
+  if (foco) { $('#acao').scrollIntoView({ behavior: 'smooth', block: 'center' }); (t === 'cortes' ? $('#fonte') : $('#canal')).focus({ preventScroll: true }); }
+}
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => aba(b.dataset.t));
+let abaIni = 'chat'; try { abaIni = localStorage.getItem('vz_aba') || 'chat'; } catch (e) {}
+aba(abaIni);
+$('#ver-todas').onclick = () => { todas = !todas; render._k = null; render(); };
 
 $('#b-chat').onclick = async () => {
   const ativa = G.find(g => ['pedido', 'gravando'].includes(g.status));
@@ -104,6 +147,32 @@ async function excluir(id) {
   toast('Excluída'); carregar();
 }
 
+// mini-gráfico dos últimos 7 dias (curva suave + área)
+const DIA = 864e5;
+function porDia(itens) {
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const v = Array(7).fill(0);
+  itens.forEach(x => { const d = Math.round((hoje - new Date(x.criado_em).setHours(0, 0, 0, 0)) / DIA); if (d >= 0 && d < 7) v[6 - d]++; });
+  return v;
+}
+function spark(id, v) {
+  const max = Math.max(...v, 1), W = 120, H = 44, pad = 5;
+  const pts = v.map((y, i) => [i * W / (v.length - 1), H - pad - (y / max) * (H - pad * 2)]);
+  let d = `M0,${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], cx = (x0 + x1) / 2; d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`; }
+  $('#' + id).innerHTML = `<defs><linearGradient id="${id}-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".25"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>`
+    + `<path d="${d} L${W},${H} L0,${H}Z" fill="url(#${id}-a)" stroke="none"/><path d="${d}" vector-effect="non-scaling-stroke"/>`;
+}
+function delta(id, n) {
+  const el = $('#' + id);
+  el.className = 'dl' + (n ? ' up' : '');
+  el.innerHTML = n ? `<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>${n} em 7 dias` : 'nada em 7 dias';
+}
+const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
+const mmss = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const nomeLive = l => l ? (l.titulo || l.fonte.split(/[/=]/).pop()) : '';
+const postado = c => c.tiktok || c.shorts || c.reels;
+
 function render() {
   // chat
   const ativa = G.find(g => ['pedido', 'gravando', 'parar'].includes(g.status));
@@ -114,11 +183,11 @@ function render() {
   $('#st-chat').textContent = !ativa ? 'Parado' : ativa.status === 'pedido' ? 'Esperando o notebook...' : ativa.status === 'parar' ? 'Parando...' : 'Gravando #' + ativa.canal;
   $('#st-chat2').textContent = grav ? `${ativa.mensagens} mensagens · ${ativa.marcadores} #corte` : ativa ? 'O notebook precisa estar ligado' : 'Inicie antes de entrar ao vivo';
   $('#b-chat').textContent = ativa ? 'Parar gravação' : 'Iniciar gravação';
-  $('#b-chat').className = 'btn' + (ativa ? ' sec' : '');
+  $('#b-chat').className = 'btn ' + (ativa ? 'sec' : 'out');
   const sel = $('#selchat'), v = sel.value;
   const ops = G.filter(g => g.status !== 'erro');
   sel.innerHTML = '<option value="">Sem chat (só pelo áudio)</option>' + ops.map(g =>
-    `<option value="${g.id}">#${esc(g.canal)} · ${new Date(g.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${g.mensagens} msgs</option>`).join('');
+    `<option value="${g.id}">Chat #${esc(g.canal)} · ${quando(g.criado_em)} · ${g.mensagens} msgs</option>`).join('');
   sel.value = primeira && ops.length ? ops[0].id : v;
 
   // fila / progresso
@@ -129,35 +198,48 @@ function render() {
     return `<div class="prog"><div class="prog-top"><span>${esc(txt)}</span><span>${pct}%</span></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <div class="etapas">${ETAPAS.map((e, i) => `<span class="${i + 1 < l.etapa ? 'feito' : i + 1 == l.etapa && l.status == 'processando' ? 'agora' : ''}">${e}</span>`).join('')}</div>
-      <div class="row" style="justify-content:space-between;margin-top:10px"><span class="meta">${esc(l.fonte.replace('https://www.', ''))}</span>
+      <div class="prog-f"><span class="meta">${platTag(l.fonte)}${esc(l.fonte.replace(/^https:\/\/(www\.)?/, ''))}</span>
       <button class="btn dang sm" onclick="cancelar('${l.id}')">Cancelar</button></div></div>`;
   }).join('');
+  $('#andamento').hidden = !ativos.length;
 
-  // números
+  // números + mini-gráficos
   const prontas = L.filter(l => l.status === 'pronto');
-  const vivos = C.filter(c => !c.descartado), post = vivos.filter(c => c.tiktok || c.shorts || c.reels).length;
+  const vivos = C.filter(c => !c.descartado), postados = vivos.filter(postado), pendentes = vivos.filter(c => !postado(c));
   $('#s-lives').textContent = prontas.length; $('#s-cortes').textContent = C.length;
-  $('#s-post').textContent = post; $('#s-fila').textContent = vivos.length - post;
+  $('#s-post').textContent = postados.length; $('#s-fila').textContent = pendentes.length;
+  [['lives', prontas], ['cortes', C], ['post', postados], ['fila', pendentes]].forEach(([k, arr]) => {
+    const d = porDia(arr); spark('g-' + k, d); delta('d-' + k, d.reduce((a, b) => a + b, 0));
+  });
 
-  // tabela de lives
-  const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const outras = L.filter(l => ['pronto', 'erro'].includes(l.status));
-  const html = outras.length ? '<div class="tbl"><div class="tr th"><span>Live</span><span>Status</span><span>Cortes</span><span>Postados</span><span>Criada em</span><span></span></div>' + outras.map(l => {
-    const cs = C.filter(c => c.live_id === l.id), p = cs.filter(c => c.tiktok || c.shorts || c.reels).length;
-    const capa = cs.find(c => c.video_url), ok = l.status === 'pronto';
-    const st = ok ? '<span class="st ok">Pronta</span>' : l.status === 'erro' ? '<span class="st err">Erro</span>' : '<span class="st">Cancelada</span>';
-    const pct = cs.length ? Math.round(p / cs.length * 100) : 0;
-    return `<div class="tr"><a class="lv-t" href="${ok ? '/app/live?id=' + l.id : '#'}"><span class="th-v">${capa ? `<video src="${esc(capa.video_url)}#t=8" preload="metadata" muted></video>` : '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>'}</span>
-      <span class="lv-n"><b title="${esc(l.titulo || '')}">${platTag(l.fonte)}${esc(l.titulo || l.fonte.split(/[/=]/).pop())}</b>
-      <small class="${l.status === 'erro' ? 'err' : ''}" title="${esc(l.erro || '')}">${l.status === 'erro' && l.erro ? esc(l.erro.slice(0, 90)) : esc(l.canal ? '#' + l.canal : l.fonte.replace('https://www.', ''))}</small></span></a>
-      <span data-l="Status">${st}</span>
-      <span data-l="Cortes" class="n">${cs.length || '–'}${l.longo_url ? `<small class="yt ${l.longo_postado ? 'ok' : ''}">+ YouTube</small>` : ''}</span>
-      <span data-l="Postados">${cs.length ? `<span class="mini"><i style="width:${pct}%"></i></span><small class="n">${p}/${cs.length}</small>` : '<small>–</small>'}</span>
-      <span data-l="Criada em" class="meta">${quando(l.criado_em)}</span>
-      <span class="acts">${ok ? `<a class="btn sm" href="/app/live?id=${l.id}">Ver cortes</a>` : `<button class="btn sm sec" onclick="acao('${l.id}','fila')">Tentar de novo</button>`}
-      <button class="icon-btn" title="Excluir" aria-label="Excluir" onclick="excluir('${l.id}')"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></span></div>`;
-  }).join('') + '</div>' : '<div class="empty"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg></span><b>Nenhuma live processada ainda</b><span>Seus cortes aparecem aqui assim que o notebook terminar.</span><ol><li><i>1</i>Grave o chat</li><li><i>2</i>Faça sua live</li><li><i>3</i>Cole o link do VOD</li></ol></div>';
+  // últimos cortes
+  const ult = vivos.filter(c => c.video_url).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em)).slice(0, 4);
+  const hu = ult.length ? ult.map(c => {
+    const l = L.find(x => x.id === c.live_id), n = C.filter(x => x.live_id === c.live_id).length, t = c.titulo || nomeLive(l);
+    return `<div class="uc"><a class="uc-v" href="/app/cortes?live=${c.live_id}"><video src="${esc(c.video_url)}#t=${Math.min(8, Math.floor((c.duracao || 16) / 2))}" preload="metadata" muted></video>${c.duracao ? `<span class="dur">${mmss(c.duracao)}</span>` : ''}</a>
+      <div class="uc-t"><b title="${esc(t)}">${esc(t)}</b><small>${n} ${n == 1 ? 'corte' : 'cortes'} · ${quando(c.criado_em)}</small></div>
+      <a class="btn sm out" href="/app/cortes?live=${c.live_id}">Ver cortes</a></div>`;
+  }).join('') : `<div class="vazio">${IC_VIDEO}<b>Nenhum corte ainda</b><span>Eles aparecem aqui assim que o notebook terminar.</span></div>`;
+  if (hu !== render._u) { $('#ultimos').innerHTML = hu; render._u = hu; }
+
+  // lives recentes
+  const outras = L.filter(l => ['pronto', 'erro'].includes(l.status)), lista = todas ? outras : outras.slice(0, 5);
+  $('#ver-todas').hidden = outras.length <= 5;
+  $('#ver-todas').firstChild.textContent = todas ? 'Ver menos' : 'Ver todas';
+  const html = lista.length ? lista.map(l => {
+    const cs = C.filter(c => c.live_id === l.id), p = cs.filter(postado).length;
+    const capa = cs.find(c => c.video_url), ok = l.status === 'pronto', erro = l.status === 'erro';
+    const st = ok ? '<span class="st ok">Concluída</span>' : erro ? '<span class="st err">Erro</span>' : '<span class="st">Cancelada</span>';
+    const sub = erro && l.erro ? `<span class="err" title="${esc(l.erro)}">${esc(l.erro.slice(0, 90))}</span>`
+      : `${IC_CAL}<span>${quando(l.criado_em)}</span>${l.canal ? `<span>#${esc(l.canal)}</span>` : ''}`;
+    return `<div class="lr"><a class="lr-v" href="${ok ? '/app/cortes?live=' + l.id : '#'}">${capa ? `<video src="${esc(capa.video_url)}#t=8" preload="metadata" muted></video>` : IC_VIDEO}</a>
+      <div class="lr-t"><div class="lr-tags">${st}${platTag(l.fonte)}</div><b title="${esc(l.titulo || '')}">${esc(nomeLive(l))}</b><small>${sub}</small></div>
+      <div class="lr-n"><div><b class="n">${cs.length}</b> ${cs.length == 1 ? 'corte' : 'cortes'}${l.longo_url ? ' <span class="yt-l">+ longo</span>' : ''}</div>${cs.length ? `<div class="lr-p"><span class="mini"><i style="width:${Math.round(p / cs.length * 100)}%"></i></span><small>${p}/${cs.length} postados</small></div>` : ''}</div>
+      <div class="lr-a">${ok ? `<a class="btn sm out" href="/app/cortes?live=${l.id}">Ver detalhes</a>` : `<button class="btn sm sec" onclick="acao('${l.id}','fila')">Tentar de novo</button>`}
+      <button class="icon-btn" title="Excluir" aria-label="Excluir" onclick="excluir('${l.id}')">${IC_LIXO}</button></div></div>`;
+  }).join('') : `<div class="vazio">${IC_VIDEO}<b>Nenhuma live processada ainda</b><span>Grave o chat, faça sua live e cole o link do VOD.</span></div>`;
   if (html !== render._k) { $('#lives').innerHTML = html; render._k = html; }
+
   primeira = false;
 }
 
@@ -165,7 +247,7 @@ async function carregar() {
   const [g, l, c] = await Promise.all([
     VZ.sb.from('gravacoes_chat').select('*').order('criado_em', { ascending: false }).limit(20),
     VZ.sb.from('lives').select('*').order('criado_em', { ascending: false }).limit(60),
-    VZ.sb.from('cortes').select('id,live_id,n,video_url,tiktok,shorts,reels,descartado').order('n'),
+    VZ.sb.from('cortes').select('id,live_id,n,titulo,duracao,video_url,tiktok,shorts,reels,descartado,criado_em').order('n'),
   ]);
   const err = g.error || l.error || c.error;
   if (err) return toast(VZ.erroPt(err));

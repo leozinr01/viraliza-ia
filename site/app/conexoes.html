@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611051541">
+<link rel="stylesheet" href="/assets/app.css?v=202611051821">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611051541"></script>
-<script src="/assets/viraliza.js?v=202611051541"></script>
+<script src="/assets/config.js?v=202611051821"></script>
+<script src="/assets/viraliza.js?v=202611051821"></script>
 </head>
 <body>
 <div class="shell">
@@ -20,7 +20,7 @@
   <nav class="nav">
     <span class="nav-h">Estúdio</span>
     <a href="/app" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
-    <a href="/app#lives" class=""><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>Lives e cortes</a>
+    <a href="/app/cortes" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="11" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><path d="M3 18h18M3 21h11"/></svg>Meus cortes</a>
     <a href="/app/conexoes" class="on"><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
     <span class="nav-h">Suporte</span>
     <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
@@ -86,7 +86,17 @@ let CON = [];
 async function conectar(p, b) {
   b.disabled = true; b.textContent = 'Abrindo...';
   const { data, error } = await VZ.sb.functions.invoke('conectar', { body: { plataforma: p } });
-  if (error || !data || !data.url) { b.disabled = false; b.textContent = 'Conectar'; return toast('Não deu pra abrir a conexão. Tente de novo.'); }
+  if (error || !data || !data.url) {
+    b.disabled = false; b.textContent = 'Conectar';
+    let msg = (data && data.erro) || '';
+    if (error && error.context && typeof error.context.json === 'function') {
+      const st = error.context.status;
+      msg = await error.context.json().then(d => d.erro || d.message || '').catch(() => '');
+      if (st === 404) msg = 'O serviço de conexão ainda não foi publicado no servidor.';
+    } else if (error) msg = 'Sem resposta do servidor. Confira sua internet.';
+    console.error('conectar', p, error || data);
+    return toast('Não deu pra abrir a conexão' + (msg ? ': ' + msg : '. Tente de novo.'));
+  }
   location.href = data.url;
 }
 async function desconectar(id, nome) {

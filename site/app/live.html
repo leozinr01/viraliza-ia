@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611051541">
+<link rel="stylesheet" href="/assets/app.css?v=202611051821">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611051541"></script>
-<script src="/assets/viraliza.js?v=202611051541"></script>
+<script src="/assets/config.js?v=202611051821"></script>
+<script src="/assets/viraliza.js?v=202611051821"></script>
 </head>
 <body>
 <div class="shell">
@@ -19,8 +19,8 @@
   <a class="logo" href="/app"><img src="/assets/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
   <nav class="nav">
     <span class="nav-h">Estúdio</span>
-    <a href="/app" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
-    <a href="/app#lives" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>Lives e cortes</a>
+    <a href="/app" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
+    <a href="/app/cortes" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="11" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><path d="M3 18h18M3 21h11"/></svg>Meus cortes</a>
     <a href="/app/conexoes" class=""><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
     <span class="nav-h">Suporte</span>
     <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
@@ -33,7 +33,7 @@
 </aside>
 <div class="main">
 
-<header class="pagebar"><div><div class="crumb"><a href="/app">Estúdio</a> <span>/</span> <a href="/app#lives">Lives e cortes</a></div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div>
+<header class="pagebar"><div><div class="crumb"><a href="/app">Estúdio</a> <span>/</span> <a href="/app#lives-h">Lives recentes</a></div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div>
  <a class="btn sec" href="/app"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Voltar</a></header>
 <main class="wrap">
 <section class="card yt" id="yt" hidden><video id="ytv" controls preload="metadata"></video>
@@ -112,7 +112,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
 });
 function card(c) {
   const exp = expirou(c.expira_em) || !c.video_url;
-  return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}">
+  return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}" id="c${c.n}">
   <div class="vid">${exp ? '<div class="expirado">Vídeo expirou<br>(apagado depois de 7 dias)</div>' : `<video src="${esc(c.video_url)}" controls preload="metadata"></video>`}
   <div class="tags"><span class="tag">#${c.n} · ${hms(c.inicio)}</span>${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : `<span class="tag">🔥 ${(c.nota || 0).toFixed(1)}</span>`}</div></div>
   <div class="body"><textarea rows="2" data-k="titulo" maxlength="300">${esc(c.titulo)}</textarea>
@@ -234,6 +234,8 @@ PRONTO.then(async () => {
   }
   if (LIVE.expira_em) $('#aviso').textContent = 'Os vídeos ficam disponíveis até ' + new Date(LIVE.expira_em).toLocaleString('pt-BR') + '. Baixe antes disso.';
   $('#grid').innerHTML = CS.map(card).join(''); filtrar();
+  const alvoN = location.hash.match(/^#c(\d+)$/), alvoEl = alvoN && $('#c' + alvoN[1]);
+  if (alvoEl) { alvoEl.hidden = false; alvoEl.scrollIntoView({ block: 'center' }); alvoEl.classList.add('foco'); }
   const con = await VZ.sb.from('conexoes').select('plataforma,conta_nome');
   CONS = con.data || [];
   carregarPubs();

@@ -1,0 +1,170 @@
+{% extends "base_app.html" %}
+{% block titulo %}Meus cortes · Viraliza{% endblock %}
+{% block nav_painel %}{% endblock %}{% block nav_cortes %}on{% endblock %}
+{% block conteudo %}
+<main class="dash">
+<header class="dtop">
+ <div class="dtop-t">
+  <h1>Meus cortes</h1>
+  <p class="meta" id="resumo">Todos os vídeos que você já cortou, de todas as lives.</p>
+ </div>
+ <a class="btn btn-lg" href="/app#acao"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo processamento</a>
+</header>
+
+<section class="bib-bar" aria-label="Filtros">
+ <div class="seg" role="tablist" id="filtros">
+  <button role="tab" data-f="todos" class="on">Todos <span class="cnt" id="n-todos">0</span></button>
+  <button role="tab" data-f="pend">Falta postar <span class="cnt" id="n-pend">0</span></button>
+  <button role="tab" data-f="post">Postados <span class="cnt" id="n-post">0</span></button>
+  <button role="tab" data-f="desc">Descartados <span class="cnt" id="n-desc">0</span></button>
+ </div>
+ <div class="bib-f">
+  <div class="inp bib-busca"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="text" id="busca" placeholder="Buscar pelo título" aria-label="Buscar pelo título"></div>
+  <select id="f-live" aria-label="Filtrar por live"><option value="">Todas as lives</option></select>
+  <select id="f-ordem" aria-label="Ordenar">
+   <option value="novos">Mais recentes</option>
+   <option value="nota">Melhor nota</option>
+   <option value="antigos">Mais antigos</option>
+  </select>
+ </div>
+</section>
+
+<div class="bib-longo" id="longo" hidden></div>
+<section class="bib" id="bib" aria-live="polite"></section>
+<div class="bib-mais"><button class="btn sec" id="mais" hidden>Mostrar mais</button></div>
+<p class="meta bib-aviso">Os vídeos ficam disponíveis por 7 dias depois de prontos. Baixe os que quiser guardar.</p>
+</main>
+
+<dialog class="dlg dlg-v" id="dlg-v">
+ <div class="dlg-h"><h2 id="v-t">Corte</h2><button class="icon-btn" onclick="fecharV()" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+ <div class="dlg-vb"><video id="v-vid" controls playsinline></video>
+  <div class="dlg-vi"><a class="bc-l" id="v-live"></a><small class="meta" id="v-meta"></small>
+   <div class="bc-r" id="v-redes"></div>
+   <div class="dlg-va"><a class="btn out" id="v-pub">Publicar</a><a class="btn sec" id="v-dl" title="Baixar MP4"></a></div></div>
+ </div>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+const REDES = { tiktok: 'TikTok', shorts: 'Shorts', reels: 'Reels' };
+const IC_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>';
+const POR_PAG = 24;
+let CS = [], LV = {}, filtro = 'todos', limite = POR_PAG;
+const postado = c => c.tiktok || c.shorts || c.reels;
+const expirou = c => !c.video_url || (c.expira_em && new Date(c.expira_em) < new Date());
+const mmss = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
+const nomeLive = l => l ? (l.titulo || l.fonte.split(/[/=]/).pop()) : 'Live';
+const tituloDe = c => (c.titulo || '').trim() || `Corte #${c.n} · ${nomeLive(LV[c.live_id])}`;
+const sem = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const linkPub = c => `/app/live?id=${c.live_id}#c${c.n}`;
+
+function bate(c) {
+  if (filtro === 'todos' ? c.descartado : filtro === 'pend' ? c.descartado || postado(c) : filtro === 'post' ? !postado(c) : !c.descartado) return false;
+  const lv = $('#f-live').value; if (lv && c.live_id !== lv) return false;
+  const q = sem($('#busca').value.trim()); if (q && !sem(tituloDe(c) + ' ' + nomeLive(LV[c.live_id])).includes(q)) return false;
+  return true;
+}
+function expiraEm(c) {
+  if (!c.expira_em || expirou(c)) return '';
+  const h = (new Date(c.expira_em) - Date.now()) / 36e5;
+  return h < 48 ? `<span class="tag warn">Expira em ${h < 1 ? 'menos de 1h' : Math.floor(h) + 'h'}</span>` : '';
+}
+function card(c) {
+  const l = LV[c.live_id], exp = expirou(c), t = tituloDe(c);
+  return `<article class="bc ${c.descartado ? 'desc' : ''} ${exp ? 'exp' : ''}" data-id="${c.id}">
+    <div class="bc-v">${exp ? '<div class="bc-x">Vídeo expirou<small>apagado depois de 7 dias</small></div>'
+      : `<video src="${esc(c.video_url)}#t=${Math.min(3, Math.floor((c.duracao || 6) / 2))}" preload="metadata" muted playsinline loop></video><button class="bc-play" data-a="ver" aria-label="Assistir">${IC_PLAY}</button>`}
+      <div class="bc-tags">${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : c.nota ? `<span class="tag">🔥 ${Number(c.nota).toFixed(1)}</span>` : '<span></span>'}${expiraEm(c)}</div>
+      ${c.duracao ? `<span class="dur">${mmss(c.duracao)}</span>` : ''}</div>
+    <div class="bc-b"><b class="bc-t" title="${esc(t)}">${esc(t)}</b>
+      <a class="bc-l" href="/app/live?id=${c.live_id}">${platTag(l ? l.fonte : '')}<span>${esc(nomeLive(l))}</span></a>
+      <div class="bc-r">${Object.entries(REDES).map(([r, n]) => `<span class="${c[r] ? 'on' : ''}">${c[r] ? '✓ ' : ''}${n}</span>`).join('')}</div>
+      <div class="bc-a">${exp ? `<span class="meta">${quando(c.criado_em)}</span>` : `<a class="btn sm out" href="${linkPub(c)}">Publicar</a>
+        <a class="icon-btn" href="${esc(c.download_url || c.video_url)}" title="Baixar MP4" aria-label="Baixar MP4">${ICON_DL}</a>`}
+        <button class="icon-btn" data-a="desc" title="${c.descartado ? 'Restaurar' : 'Descartar'}" aria-label="${c.descartado ? 'Restaurar' : 'Descartar'}">${c.descartado
+          ? '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>'
+          : '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>'}</button></div>
+    </div></article>`;
+}
+function render() {
+  const ord = $('#f-ordem').value;
+  const lista = CS.filter(bate).sort((a, b) => ord === 'nota' ? (b.marcador - a.marcador) || (b.nota || 0) - (a.nota || 0)
+    : ord === 'antigos' ? new Date(a.criado_em) - new Date(b.criado_em) : new Date(b.criado_em) - new Date(a.criado_em));
+  const vivos = CS.filter(c => !c.descartado);
+  $('#n-todos').textContent = vivos.length;
+  $('#n-pend').textContent = vivos.filter(c => !postado(c)).length;
+  $('#n-post').textContent = vivos.filter(postado).length;
+  $('#n-desc').textContent = CS.filter(c => c.descartado).length;
+  $('#resumo').textContent = CS.length
+    ? `${vivos.length} ${vivos.length == 1 ? 'corte' : 'cortes'} de ${Object.keys(LV).length} ${Object.keys(LV).length == 1 ? 'live' : 'lives'} · ${vivos.filter(postado).length} postados`
+    : 'Todos os vídeos que você já cortou, de todas as lives.';
+  const filtrando = $('#busca').value.trim() || $('#f-live').value || filtro !== 'todos';
+  $('#bib').innerHTML = lista.length ? lista.slice(0, limite).map(card).join('')
+    : `<div class="vazio bib-vazio"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>
+       <b>${filtrando ? 'Nenhum corte encontrado' : 'Você ainda não tem cortes'}</b>
+       <span>${filtrando ? 'Tente outro filtro ou outra busca.' : 'Grave o chat, faça sua live e cole o link do VOD no painel.'}</span>
+       ${filtrando ? '' : '<a class="btn out" href="/app#acao" style="margin-top:14px">Gerar meus primeiros cortes</a>'}</div>`;
+  const lv = LV[$('#f-live').value];
+  $('#longo').hidden = !(lv && lv.longo_url);
+  if (lv && lv.longo_url) $('#longo').innerHTML = `<span class="dcard-ic"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg></span>
+    <div><b>Vídeo longo dessa live</b><span class="meta">${lv.longo_postado ? 'Já postado no YouTube.' : 'Os melhores momentos em ordem, pronto pro YouTube.'}</span></div>
+    <a class="btn sm out" href="/app/live?id=${lv.id}">Ver vídeo longo</a>`;
+  $('#mais').hidden = lista.length <= limite;
+  $('#mais').textContent = `Mostrar mais (${lista.length - limite})`;
+}
+
+document.querySelectorAll('#filtros button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#filtros button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+  filtro = b.dataset.f; limite = POR_PAG; render();
+});
+let tBusca; $('#busca').oninput = () => { clearTimeout(tBusca); tBusca = setTimeout(() => { limite = POR_PAG; render(); }, 150); };
+$('#f-live').onchange = $('#f-ordem').onchange = () => { limite = POR_PAG; render(); };
+$('#mais').onclick = () => { limite += POR_PAG; render(); };
+
+// prévia: passa o mouse e o vídeo toca sem som
+$('#bib').addEventListener('mouseover', e => { const v = e.target.closest('.bc-v')?.querySelector('video'); if (v && v.paused) v.play().catch(() => {}); });
+$('#bib').addEventListener('mouseout', e => { const box = e.target.closest('.bc-v'); if (box && !box.contains(e.relatedTarget)) { const v = box.querySelector('video'); if (v) v.pause(); } });
+$('#bib').addEventListener('click', async e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const c = CS.find(x => x.id === b.closest('.bc').dataset.id); if (!c) return;
+  if (b.dataset.a === 'ver') abrirV(c);
+  else if (b.dataset.a === 'desc') {
+    c.descartado = !c.descartado; render();
+    const { error } = await VZ.sb.from('cortes').update({ descartado: c.descartado }).eq('id', c.id);
+    if (error) { c.descartado = !c.descartado; render(); return toast(VZ.erroPt(error)); }
+    toast(c.descartado ? 'Corte descartado' : 'Corte restaurado');
+  }
+});
+
+function abrirV(c) {
+  const l = LV[c.live_id];
+  $('#v-t').textContent = tituloDe(c);
+  $('#v-vid').src = c.video_url;
+  $('#v-live').href = '/app/live?id=' + c.live_id; $('#v-live').innerHTML = platTag(l ? l.fonte : '') + `<span>${esc(nomeLive(l))}</span>`;
+  $('#v-meta').textContent = `Corte #${c.n} · ${mmss(c.duracao)} · ${quando(c.criado_em)}`;
+  $('#v-redes').innerHTML = Object.entries(REDES).map(([r, n]) => `<span class="${c[r] ? 'on' : ''}">${c[r] ? '✓ ' : ''}${n}</span>`).join('');
+  $('#v-pub').href = linkPub(c);
+  $('#v-dl').href = c.download_url || c.video_url; $('#v-dl').innerHTML = ICON_DL + ' Baixar MP4';
+  $('#dlg-v').showModal(); $('#v-vid').play().catch(() => {});
+}
+function fecharV() { $('#dlg-v').close(); }
+$('#dlg-v').addEventListener('close', () => { $('#v-vid').pause(); $('#v-vid').removeAttribute('src'); $('#v-vid').load(); });
+$('#dlg-v').addEventListener('click', e => { if (e.target === $('#dlg-v')) fecharV(); });
+
+PRONTO.then(async () => {
+  const [l, c] = await Promise.all([
+    VZ.sb.from('lives').select('id,titulo,fonte,canal,criado_em,longo_url,longo_postado').order('criado_em', { ascending: false }),
+    VZ.sb.from('cortes').select('id,live_id,n,titulo,duracao,nota,marcador,video_url,download_url,expira_em,tiktok,shorts,reels,descartado,criado_em').order('criado_em', { ascending: false }),
+  ]);
+  if (l.error || c.error) return toast(VZ.erroPt(l.error || c.error));
+  LV = Object.fromEntries(l.data.map(x => [x.id, x]));
+  CS = c.data;
+  const comCortes = l.data.filter(x => CS.some(k => k.live_id === x.id));
+  $('#f-live').innerHTML = '<option value="">Todas as lives</option>' + comCortes.map(x => `<option value="${x.id}">${esc(nomeLive(x).slice(0, 60))}</option>`).join('');
+  const q = new URLSearchParams(location.search).get('live'); if (q && LV[q]) $('#f-live').value = q;
+  LV = Object.fromEntries(comCortes.map(x => [x.id, x]));
+  render();
+});
+</script>
+{% endblock %}

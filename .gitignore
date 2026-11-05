@@ -12,3 +12,5 @@ chats/
 __pycache__/
 *.pyc
 .venv/
+
+supabase/.temp/

@@ -7,7 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 BASE = os.path.dirname(os.path.abspath(__file__))
 SRC, OUT = os.path.join(BASE, "site_src"), os.path.join(BASE, "site")
 PAGINAS = {"index.html": "index.html", "entrar.html": "entrar.html", "contato.html": "contato.html",
-           "app.html": "app/index.html", "live.html": "app/live.html", "conexoes.html": "app/conexoes.html",
+           "app.html": "app/index.html", "live.html": "app/live.html", "cortes.html": "app/cortes.html", "conexoes.html": "app/conexoes.html",
            "privacidade.html": "privacidade.html", "termos.html": "termos.html"}
 SB_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"
 
