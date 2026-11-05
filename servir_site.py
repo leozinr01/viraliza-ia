@@ -15,6 +15,10 @@ class H(http.server.SimpleHTTPRequestHandler):
             return p + ".html"
         return p
 
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")  # sempre a versão mais nova durante o desenvolvimento
+        super().end_headers()
+
     def log_message(self, *a):
         pass
 

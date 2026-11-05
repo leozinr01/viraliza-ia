@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611051103">
+<link rel="stylesheet" href="/assets/app.css?v=202611051148">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611051103"></script>
-<script src="/assets/viraliza.js?v=202611051103"></script>
+<script src="/assets/config.js?v=202611051148"></script>
+<script src="/assets/viraliza.js?v=202611051148"></script>
 </head>
 <body>
 <header class="top">
@@ -69,7 +69,7 @@ async function statusWorker() {
   return on;
 }
 const PRONTO = VZ.exigirLogin().then(s => {
-  const n = (s.user.user_metadata && s.user.user_metadata.nome) || s.user.email;
+  const m = s.user.user_metadata || {}, n = m.nome || m.full_name || m.name || s.user.email;
   $('#quem').innerHTML = 'Olá, <b>' + esc(String(n).split(' ')[0]) + '</b>';
   statusWorker(); setInterval(statusWorker, 15000);
   return s;

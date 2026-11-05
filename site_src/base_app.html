@@ -35,7 +35,7 @@ async function statusWorker() {
   return on;
 }
 const PRONTO = VZ.exigirLogin().then(s => {
-  const n = (s.user.user_metadata && s.user.user_metadata.nome) || s.user.email;
+  const m = s.user.user_metadata || {}, n = m.nome || m.full_name || m.name || s.user.email;
   $('#quem').innerHTML = 'Olá, <b>' + esc(String(n).split(' ')[0]) + '</b>';
   statusWorker(); setInterval(statusWorker, 15000);
   return s;
