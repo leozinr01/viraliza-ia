@@ -1,11 +1,12 @@
 {% extends "base_app.html" %}
 {% block titulo %}Cortes · Viraliza{% endblock %}
+{% block nav_painel %}{% endblock %}{% block nav_lives %}on{% endblock %}
 {% block conteudo %}
+<header class="pagebar"><div><div class="crumb"><a href="/app">Estúdio</a> <span>/</span> <a href="/app#lives">Lives e cortes</a></div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div>
+ <a class="btn sec" href="/app"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Voltar</a></header>
 <main class="wrap">
-<a class="back" href="/app">← Voltar</a>
-<div class="lhead"><div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div></div>
 <section class="card yt" id="yt" hidden><video id="ytv" controls preload="metadata"></video>
- <div><span class="tag" style="background:rgba(255,0,0,.15);color:#ff6b6b">YouTube</span><h2>Vídeo longo</h2>
+ <div><span class="tag yt-tag">YouTube</span><h2>Vídeo longo</h2>
  <p class="meta">Os melhores momentos da live em ordem, pronto pra subir no YouTube.</p>
  <div class="row" style="margin-top:16px"><a class="btn" id="yt-dl"></a>
  <button class="rd" id="yt-post" style="flex:none;padding:10px 14px">Marcar como postado</button></div></div></section>
