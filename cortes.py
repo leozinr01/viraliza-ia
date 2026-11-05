@@ -1,7 +1,7 @@
 """VIRALIZA: transforma o VOD da live em cortes verticais legendados + um vídeo longo pro YouTube.
 
 Uso:
-  python cortes.py <link do VOD da Twitch ou arquivo .mp4> [--chat chats/arquivo.jsonl] [--teste MINUTOS]
+  python cortes.py <link do VOD (Twitch, YouTube ou Kick) ou arquivo .mp4> [--chat chats/arquivo.jsonl] [--teste MINUTOS]
 
 Etapas (cada uma é salva; se rodar de novo, pula o que já foi feito):
   1. baixa o VOD          2. analisa o volume do áudio      3. lê o chat gravado
@@ -37,9 +37,13 @@ def baixar(fonte, pasta, teste_min):
         shutil.copy(fonte, vod)
         return vod, {}
     print("1/7 Baixando o VOD (pode demorar)...")
-    cmd = [sys.executable, "-m", "yt_dlp", "-f", "best[height<=1080]/best", "-N", "8",
+    # YouTube entrega 720p/1080p com vídeo e áudio separados (bv+ba); Twitch e Kick vêm juntos (b)
+    cmd = [sys.executable, "-m", "yt_dlp", "-f", "bv[height<=1080][vcodec^=avc1]+ba[ext=m4a]/bv[height<=1080]+ba/b[height<=1080]/b", "-N", "8",
            "--ffmpeg-location", FFMPEG, "--write-info-json", "-o", os.path.join(pasta, "vod.%(ext)s"),
-           "--remux-video", "mp4", fonte]
+           "--remux-video", "mp4", "--no-playlist", fonte]
+    js = next((r for r in ("deno", "node") if shutil.which(r)), None)  # o YouTube precisa de um runtime JS
+    if js:
+        cmd[3:3] = ["--js-runtimes", js]
     if teste_min:
         cmd[3:3] = ["--download-sections", f"*0-{teste_min * 60}"]
     subprocess.run(cmd, check=True)
@@ -277,7 +281,7 @@ def pagina_revisao(pasta, cortes, trechos_longo):
 # ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("fonte", help="link do VOD da Twitch ou arquivo de vídeo")
+    ap.add_argument("fonte", help="link do VOD (Twitch, YouTube ou Kick) ou arquivo de vídeo")
     ap.add_argument("--chat", help="arquivo .jsonl gravado pelo gravar_chat.py")
     ap.add_argument("--teste", type=int, help="baixa só os primeiros N minutos (pra testar)")
     ap.add_argument("--sem-longo", action="store_true")

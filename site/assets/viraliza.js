@@ -44,7 +44,7 @@ window.VZ = (() => {
       [/password should be at least/i, 'A senha precisa ter pelo menos 8 caracteres.'],
       [/rate limit|too many/i, 'Muitas tentativas. Espere um minuto e tente de novo.'],
       [/unable to validate email|invalid.*email/i, 'Esse e-mail não parece válido.'],
-      [/lives_fonte_check/i, 'Cole um link de VOD da Twitch (twitch.tv/videos/...).'],
+      [/lives_fonte_check/i, 'Cole o link de um VOD da Twitch, YouTube ou Kick.'],
       [/failed to fetch|network/i, 'Sem conexão. Confira sua internet.'],
     ];
     for (const [re, t] of mapa) if (re.test(m)) return t;

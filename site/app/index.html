@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611051422">
+<link rel="stylesheet" href="/assets/app.css?v=202611051541">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611051422"></script>
-<script src="/assets/viraliza.js?v=202611051422"></script>
+<script src="/assets/config.js?v=202611051541"></script>
+<script src="/assets/viraliza.js?v=202611051541"></script>
 </head>
 <body>
 <div class="shell">
@@ -21,6 +21,7 @@
     <span class="nav-h">Estúdio</span>
     <a href="/app" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
     <a href="/app#lives" class=""><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>Lives e cortes</a>
+    <a href="/app/conexoes" class=""><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
     <span class="nav-h">Suporte</span>
     <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
   </nav>
@@ -60,7 +61,8 @@
   <section class="panel">
    <div class="panel-h"><div><span class="step">Etapa 2</span><h2>Gerar os cortes</h2></div></div>
    <div class="panel-b">
-    <div class="fld"><label class="f" for="fonte">Link do VOD</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><input type="text" id="fonte" placeholder="twitch.tv/videos/123456789"></div></div>
+    <div class="fld"><label class="f" for="fonte">Link do VOD</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><input type="text" id="fonte" placeholder="Cole o link da Twitch, YouTube ou Kick"><span class="plat" id="plat-fonte" hidden></span></div>
+     <div class="plats"><span class="plat twitch">Twitch</span><span class="plat youtube">YouTube</span><span class="plat kick">Kick</span></div></div>
     <div class="fld"><label class="f" for="selchat">Chat gravado</label><select id="selchat"></select></div>
     <div class="opts">
      <label class="tg"><input type="checkbox" id="teste"><i></i>Teste rápido <small>(10 min)</small></label>
@@ -79,6 +81,12 @@
 <script>
 const ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
 const $ = s => document.querySelector(s), esc = VZ.esc, toast = VZ.toast;
+// links de VOD aceitos (a mesma regra existe no banco: lives_fonte_check)
+const PLATS = { twitch: 'Twitch', youtube: 'YouTube', kick: 'Kick' };
+const plataforma = u => /^https:\/\/(www\.|m\.)?twitch\.tv\/videos\/\d+/i.test(u) ? 'twitch'
+  : /^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?(.*&)?v=|live\/)|youtu\.be\/)[\w-]{11}/i.test(u) ? 'youtube'
+  : /^https:\/\/(www\.)?kick\.com\/([\w-]+\/videos|video)\/[\w-]+/i.test(u) ? 'kick' : null;
+const platTag = u => { const p = plataforma(u); return p ? `<span class="plat ${p}">${PLATS[p]}</span>` : ''; };
 const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 async function statusWorker() {
   const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();
@@ -119,19 +127,36 @@ $('#b-chat').onclick = async () => {
   carregar();
 };
 
+$('#fonte').oninput = () => {
+  const v = $('#fonte').value.trim(), p = plataforma(/^https?:\/\//i.test(v) ? v : 'https://' + v), el = $('#plat-fonte');
+  el.hidden = !p; if (p) { el.className = 'plat ' + p; el.textContent = PLATS[p]; }
+};
+
 $('#b-proc').onclick = async () => {
-  const fonte = $('#fonte').value.trim();
-  if (!/^https:\/\/(www\.)?twitch\.tv\/videos\/\d+/i.test(fonte)) return toast('Cole um link de VOD da Twitch (twitch.tv/videos/...)');
+  let fonte = $('#fonte').value.trim();
+  if (fonte && !/^https?:\/\//i.test(fonte)) fonte = 'https://' + fonte;
+  fonte = fonte.replace(/^http:/i, 'https:');
+  if (!plataforma(fonte)) return toast('Cole o link de um VOD da Twitch, YouTube ou Kick');
   const { error } = await VZ.sb.from('lives').insert({
     fonte, gravacao_id: $('#selchat').value || null, teste: $('#teste').checked, sem_longo: $('#semlongo').checked });
   if (error) return toast(VZ.erroPt(error));
-  $('#fonte').value = ''; toast('Na fila! O notebook vai começar.');
+  $('#fonte').value = ''; $('#fonte').oninput(); toast('Na fila! O notebook vai começar.');
   carregar();
 };
 
 async function acao(id, status) {
   const { error } = await VZ.sb.from('lives').update({ status }).eq('id', id);
   if (error) toast(VZ.erroPt(error)); carregar();
+}
+// cancelar some da tela na hora: na fila, apaga (nem começou); processando, avisa o notebook pra parar
+async function cancelar(id) {
+  const l = L.find(x => x.id === id);
+  L = L.filter(x => x.id !== id); render();
+  const { error } = l && l.status === 'fila'
+    ? await VZ.sb.from('lives').delete().eq('id', id)
+    : await VZ.sb.from('lives').update({ status: 'cancelar' }).eq('id', id);
+  if (error) toast(VZ.erroPt(error)); else toast('Cancelado');
+  carregar();
 }
 async function excluir(id) {
   if (!confirm('Excluir essa live e todos os cortes dela?')) return;
@@ -158,15 +183,15 @@ function render() {
   sel.value = primeira && ops.length ? ops[0].id : v;
 
   // fila / progresso
-  const ativos = L.filter(l => ['fila', 'processando', 'cancelar'].includes(l.status));
+  const ativos = L.filter(l => ['fila', 'processando'].includes(l.status));
   $('#fila').innerHTML = ativos.map(l => {
     const pct = l.status === 'fila' ? 0 : Math.max(2, Math.round((Math.max(1, l.etapa) - 1) / 7 * 100));
-    const txt = l.status === 'fila' ? 'Na fila, esperando o notebook' : l.status === 'cancelar' ? 'Cancelando...' : (l.etapa_texto || 'Começando') + (l.detalhe ? ' · ' + l.detalhe : '');
+    const txt = l.status === 'fila' ? 'Na fila, esperando o notebook' : (l.etapa_texto || 'Começando') + (l.detalhe ? ' · ' + l.detalhe : '');
     return `<div class="prog"><div class="prog-top"><span>${esc(txt)}</span><span>${pct}%</span></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <div class="etapas">${ETAPAS.map((e, i) => `<span class="${i + 1 < l.etapa ? 'feito' : i + 1 == l.etapa && l.status == 'processando' ? 'agora' : ''}">${e}</span>`).join('')}</div>
       <div class="row" style="justify-content:space-between;margin-top:10px"><span class="meta">${esc(l.fonte.replace('https://www.', ''))}</span>
-      ${l.status !== 'cancelar' ? `<button class="btn dang sm" onclick="acao('${l.id}','cancelar')">Cancelar</button>` : ''}</div></div>`;
+      <button class="btn dang sm" onclick="cancelar('${l.id}')">Cancelar</button></div></div>`;
   }).join('');
 
   // números
@@ -177,14 +202,14 @@ function render() {
 
   // tabela de lives
   const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const outras = L.filter(l => !['fila', 'processando', 'cancelar'].includes(l.status));
+  const outras = L.filter(l => ['pronto', 'erro'].includes(l.status));
   const html = outras.length ? '<div class="tbl"><div class="tr th"><span>Live</span><span>Status</span><span>Cortes</span><span>Postados</span><span>Criada em</span><span></span></div>' + outras.map(l => {
     const cs = C.filter(c => c.live_id === l.id), p = cs.filter(c => c.tiktok || c.shorts || c.reels).length;
     const capa = cs.find(c => c.video_url), ok = l.status === 'pronto';
     const st = ok ? '<span class="st ok">Pronta</span>' : l.status === 'erro' ? '<span class="st err">Erro</span>' : '<span class="st">Cancelada</span>';
     const pct = cs.length ? Math.round(p / cs.length * 100) : 0;
     return `<div class="tr"><a class="lv-t" href="${ok ? '/app/live?id=' + l.id : '#'}"><span class="th-v">${capa ? `<video src="${esc(capa.video_url)}#t=8" preload="metadata" muted></video>` : '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>'}</span>
-      <span class="lv-n"><b title="${esc(l.titulo || '')}">${esc(l.titulo || l.fonte.split('/').pop())}</b>
+      <span class="lv-n"><b title="${esc(l.titulo || '')}">${platTag(l.fonte)}${esc(l.titulo || l.fonte.split(/[/=]/).pop())}</b>
       <small class="${l.status === 'erro' ? 'err' : ''}" title="${esc(l.erro || '')}">${l.status === 'erro' && l.erro ? esc(l.erro.slice(0, 90)) : esc(l.canal ? '#' + l.canal : l.fonte.replace('https://www.', ''))}</small></span></a>
       <span data-l="Status">${st}</span>
       <span data-l="Cortes" class="n">${cs.length || '–'}${l.longo_url ? `<small class="yt ${l.longo_postado ? 'ok' : ''}">+ YouTube</small>` : ''}</span>
