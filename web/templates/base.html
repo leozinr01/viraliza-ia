@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block titulo %}Viraliza{% endblock %}</title>
+<meta name="description" content="Viraliza transforma sua live em cortes virais para TikTok, Shorts e Reels, com legenda automática.">
+<link rel="icon" href="/static/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/site.css?v=1">
+</head>
+<body class="{% block corpo_classe %}{% endblock %}">
+<div class="bg-grid" aria-hidden="true"></div>
+<header class="nav" id="nav">
+  <a class="logo" href="/"><img src="/static/icone.svg" alt="" width="32" height="32"><span>viraliza</span></a>
+  <nav class="nav-links">
+    <a href="/#como">Como funciona</a>
+    <a href="/#recursos">Recursos</a>
+    <a href="/contato">Contato</a>
+  </nav>
+  <div class="nav-cta">
+    {% if logado %}<a class="btn" href="/app">Abrir painel</a>
+    {% else %}<a class="link" href="/entrar">Entrar</a><a class="btn" href="/entrar?modo=criar">Começar grátis</a>{% endif %}
+  </div>
+</header>
+{% block conteudo %}{% endblock %}
+{% block rodape %}
+<footer class="foot">
+  <div class="foot-in">
+    <a class="logo" href="/"><img src="/static/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
+    <p>Da live pro feed, sem editar nada.</p>
+    <nav><a href="/">Início</a><a href="/#como">Como funciona</a><a href="/contato">Contato</a><a href="/entrar">Entrar</a></nav>
+    <small>© 2026 Viraliza</small>
+  </div>
+</footer>
+{% endblock %}
+<script src="/static/site.js?v=1"></script>
+</body>
+</html>

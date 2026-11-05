@@ -1,0 +1,95 @@
+{% extends "base_app.html" %}
+{% block titulo %}Cortes · Viraliza{% endblock %}
+{% block conteudo %}
+<main class="wrap">
+<a class="back" href="/app">← Voltar</a>
+<div class="lhead"><div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div></div>
+<section class="card yt" id="yt" hidden><video id="ytv" controls preload="metadata"></video>
+ <div><span class="tag" style="background:rgba(255,0,0,.15);color:#ff6b6b">YouTube</span><h2>Vídeo longo</h2>
+ <p class="meta">Os melhores momentos da live em ordem, pronto pra subir no YouTube.</p>
+ <div class="row" style="margin-top:16px"><a class="btn" id="yt-dl"></a>
+ <button class="rd" id="yt-post" style="flex:none;padding:10px 14px">Marcar como postado</button></div></div></section>
+<div class="sec-h"><h2>Cortes verticais <span class="meta" id="cnt"></span></h2>
+<div class="tabs" id="tabs"><button class="on" data-f="todos">Todos</button><button data-f="pend">Falta postar</button><button data-f="post">Postados</button><button data-f="desc">Descartados</button></div></div>
+<div class="grid" id="grid"></div>
+<p class="meta" id="aviso" style="margin-top:20px"></p>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+const ID = new URLSearchParams(location.search).get('id');
+const REDES = { tiktok: 'TikTok', shorts: 'Shorts', reels: 'Reels' };
+let LIVE, CS = [], filtro = 'todos';
+const porN = n => CS.find(c => c.n == n);
+const postado = c => c.tiktok || c.shorts || c.reels;
+const expirou = t => t && new Date(t) < new Date();
+
+async function salvar(c, d) {
+  Object.assign(c, d);
+  const { error } = await VZ.sb.from('cortes').update(d).eq('id', c.id);
+  if (error) toast(VZ.erroPt(error));
+}
+function filtrar() {
+  document.querySelectorAll('.ct').forEach(el => {
+    const c = porN(el.dataset.n), p = postado(c);
+    el.hidden = !(filtro == 'todos' ? !c.descartado : filtro == 'pend' ? !p && !c.descartado : filtro == 'post' ? p : c.descartado);
+  });
+  $('#cnt').textContent = `· ${CS.filter(postado).length} de ${CS.length} postados`;
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); filtro = b.dataset.f; filtrar();
+});
+function card(c) {
+  const exp = expirou(c.expira_em) || !c.video_url;
+  return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}">
+  <div class="vid">${exp ? '<div class="expirado">Vídeo expirou<br>(apagado depois de 7 dias)</div>' : `<video src="${esc(c.video_url)}" controls preload="metadata"></video>`}
+  <div class="tags"><span class="tag">#${c.n} · ${hms(c.inicio)}</span>${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : `<span class="tag">🔥 ${(c.nota || 0).toFixed(1)}</span>`}</div></div>
+  <div class="body"><textarea rows="2" data-k="titulo" maxlength="300">${esc(c.titulo)}</textarea>
+  ${exp ? '' : `<a class="btn full" href="${esc(c.download_url)}">${ICON_DL} Baixar MP4</a>`}
+  <div class="redes">${Object.entries(REDES).map(([r, l]) => `<button class="rd ${c[r] ? 'on' : ''}" data-r="${r}">${c[r] ? '✓ ' : ''}${l}</button>`).join('')}</div>
+  <div class="minis"><button class="btn sec sm" data-a="copiar">Copiar título</button><button class="btn sec sm" data-a="desc">${c.descartado ? 'Restaurar' : 'Descartar'}</button></div>
+  </div></article>`;
+}
+$('#grid').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  const el = b.closest('.ct'), c = porN(el.dataset.n);
+  if (b.dataset.r) {
+    const v = !c[b.dataset.r]; salvar(c, { [b.dataset.r]: v });
+    b.classList.toggle('on', v); b.textContent = (v ? '✓ ' : '') + REDES[b.dataset.r];
+    if (v) toast('Marcado como postado no ' + REDES[b.dataset.r]);
+  } else if (b.dataset.a == 'copiar') { navigator.clipboard.writeText(el.querySelector('textarea').value); toast('Título copiado'); }
+  else if (b.dataset.a == 'desc') { const v = !c.descartado; salvar(c, { descartado: v }); el.classList.toggle('descartado', v); b.textContent = v ? 'Restaurar' : 'Descartar'; }
+  filtrar();
+});
+$('#grid').addEventListener('change', ev => {
+  if (ev.target.dataset.k) { salvar(porN(ev.target.closest('.ct').dataset.n), { titulo: ev.target.value }); toast('Título salvo'); }
+});
+
+PRONTO.then(async () => {
+  if (!ID) return location.replace('/app');
+  const [l, c] = await Promise.all([
+    VZ.sb.from('lives').select('*').eq('id', ID).maybeSingle(),
+    VZ.sb.from('cortes').select('*').eq('live_id', ID).order('n'),
+  ]);
+  if (l.error || c.error) return toast(VZ.erroPt(l.error || c.error));
+  if (!l.data) { $('#titulo').textContent = 'Live não encontrada'; return; }
+  LIVE = l.data; CS = c.data;
+  document.title = (LIVE.titulo || 'Live') + ' · Viraliza';
+  $('#titulo').textContent = LIVE.titulo || 'Live ' + LIVE.fonte.split('/').pop();
+  $('#sub').textContent = [LIVE.canal, new Date(LIVE.criado_em).toLocaleString('pt-BR'), CS.length + ' cortes'].filter(Boolean).join(' · ');
+  if (LIVE.longo_url && !expirou(LIVE.expira_em)) {
+    $('#yt').hidden = false; $('#ytv').src = LIVE.longo_url;
+    $('#yt-dl').href = LIVE.longo_download_url; $('#yt-dl').innerHTML = ICON_DL + ' Baixar MP4';
+    const yb = $('#yt-post'), sy = () => { yb.classList.toggle('on', LIVE.longo_postado); yb.textContent = LIVE.longo_postado ? '✓ Postado no YouTube' : 'Marcar como postado'; };
+    sy();
+    yb.onclick = async () => {
+      LIVE.longo_postado = !LIVE.longo_postado; sy();
+      const { error } = await VZ.sb.from('lives').update({ longo_postado: LIVE.longo_postado }).eq('id', ID);
+      if (error) toast(VZ.erroPt(error));
+    };
+  }
+  if (LIVE.expira_em) $('#aviso').textContent = 'Os vídeos ficam disponíveis até ' + new Date(LIVE.expira_em).toLocaleString('pt-BR') + '. Baixe antes disso.';
+  $('#grid').innerHTML = CS.map(card).join(''); filtrar();
+});
+</script>
+{% endblock %}

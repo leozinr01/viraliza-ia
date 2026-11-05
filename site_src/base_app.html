@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block titulo %}Painel · Viraliza{% endblock %}</title>
+<link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css?v={{ v }}">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="/assets/config.js?v={{ v }}"></script>
+<script src="/assets/viraliza.js?v={{ v }}"></script>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="/app"><img src="/assets/icone.svg" alt="" width="30" height="30"><span>viraliza</span></a>
+  <div class="row">
+    <span class="wk" id="wk" title="O notebook é quem processa os vídeos"><i></i><span>verificando...</span></span>
+    <span class="meta" id="quem"></span>
+    <button class="btn sec sm" onclick="VZ.sair()">Sair</button>
+  </div>
+</header>
+{% block conteudo %}{% endblock %}
+<script>
+const ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
+const $ = s => document.querySelector(s), esc = VZ.esc, toast = VZ.toast;
+const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+async function statusWorker() {
+  const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();
+  const on = data && data.visto_em && (Date.now() - new Date(data.visto_em)) < 90000;
+  $('#wk').classList.toggle('on', !!on);
+  $('#wk span').textContent = on ? 'notebook online' : 'notebook offline';
+  return on;
+}
+const PRONTO = VZ.exigirLogin().then(s => {
+  const n = (s.user.user_metadata && s.user.user_metadata.nome) || s.user.email;
+  $('#quem').innerHTML = 'Olá, <b>' + esc(String(n).split(' ')[0]) + '</b>';
+  statusWorker(); setInterval(statusWorker, 15000);
+  return s;
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

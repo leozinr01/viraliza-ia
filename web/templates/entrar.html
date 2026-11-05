@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Criar conta' if modo == 'criar' else 'Entrar' }} · Viraliza{% endblock %}
+{% block corpo_classe %}pg-auth{% endblock %}
+{% block conteudo %}
+<main class="auth">
+  <section class="auth-art" aria-hidden="true">
+    <div class="phone-wrap small">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="scene" data-scene="tall"></div>
+        <div class="caption" id="caption"></div>
+        <div class="ph-info"><b>@voce</b><span>seu próximo corte viral 🚀</span></div>
+        <div class="ph-prog"><i></i></div>
+      </div></div>
+      <div class="phone-shadow"></div>
+    </div>
+    <h2>Sua próxima live já tem <span class="grad">15 cortes</span> esperando.</h2>
+  </section>
+
+  <section class="auth-box">
+    <div class="tabs-auth" role="tablist">
+      <button type="button" role="tab" data-modo="entrar" class="{{ 'on' if modo != 'criar' }}">Entrar</button>
+      <button type="button" role="tab" data-modo="criar" class="{{ 'on' if modo == 'criar' }}">Criar conta</button>
+    </div>
+
+    {% if erro %}<div class="alert">{{ erro }}</div>{% endif %}
+
+    <form method="post" action="/entrar{{ ('?proximo=' ~ request.args.get('proximo')) if request.args.get('proximo') }}" class="form" data-form="entrar" {{ 'hidden' if modo == 'criar' }}>
+      <h1>Bem-vindo de volta</h1>
+      <p class="muted">Entra pra ver seus cortes.</p>
+      <label>E-mail<input type="email" name="email" required autocomplete="email" value="{{ dados.get('email','') }}"></label>
+      <label>Senha<input type="password" name="senha" required autocomplete="current-password"></label>
+      <button class="btn btn-lg full" type="submit">Entrar</button>
+    </form>
+
+    <form method="post" action="/criar-conta" class="form" data-form="criar" {{ 'hidden' if modo != 'criar' }}>
+      <h1>Cria sua conta</h1>
+      <p class="muted">Grátis. Leva 20 segundos.</p>
+      <label>Nome<input type="text" name="nome" required autocomplete="name" value="{{ dados.get('nome','') }}"></label>
+      <label>E-mail<input type="email" name="email" required autocomplete="email" value="{{ dados.get('email','') }}"></label>
+      <label>Senha<input type="password" name="senha" required minlength="8" autocomplete="new-password" placeholder="mínimo 8 caracteres"></label>
+      <button class="btn btn-lg full" type="submit">Criar conta</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
+{% block rodape %}{% endblock %}

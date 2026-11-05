@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entrar · Viraliza</title>
+<meta name="description" content="Viraliza transforma sua live em cortes virais para TikTok, Shorts e Reels, com legenda automática.">
+<link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=202611051103">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
+<script src="/assets/config.js?v=202611051103"></script>
+<script src="/assets/viraliza.js?v=202611051103"></script>
+</head>
+<body class="pg-auth">
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="32" height="32"><span>viraliza</span></a>
+  <nav class="nav-links">
+    <a href="/#como">Como funciona</a>
+    <a href="/#recursos">Recursos</a>
+    <a href="/contato">Contato</a>
+  </nav>
+  <div class="nav-cta">
+    <a class="link" href="/entrar" data-anon>Entrar</a>
+    <a class="btn" href="/entrar?modo=criar" data-anon>Começar grátis</a>
+    <a class="btn" href="/app" data-auth hidden>Abrir painel</a>
+  </div>
+</header>
+
+
+<main class="auth">
+  <section class="auth-art" aria-hidden="true">
+    <div class="phone-wrap small">
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="scene" data-scene="tall"></div>
+        <div class="caption" id="caption"></div>
+        <div class="ph-info"><b>@voce</b><span>seu próximo corte viral 🚀</span></div>
+        <div class="ph-prog"><i></i></div>
+      </div></div>
+      <div class="phone-shadow"></div>
+    </div>
+    <h2>Sua próxima live já tem <span class="grad">15 cortes</span> esperando.</h2>
+  </section>
+
+  <section class="auth-box">
+    <div class="tabs-auth" role="tablist">
+      <button type="button" role="tab" data-modo="entrar" class="on">Entrar</button>
+      <button type="button" role="tab" data-modo="criar">Criar conta</button>
+    </div>
+    <div class="alert" id="alerta" hidden></div>
+
+    <form class="form" data-form="entrar" id="f-entrar">
+      <h1>Bem-vindo de volta</h1>
+      <p class="muted">Entra pra ver seus cortes.</p>
+      <label>E-mail<input type="email" name="email" required autocomplete="email"></label>
+      <label>Senha<input type="password" name="senha" required autocomplete="current-password"></label>
+      <button class="btn btn-lg full" type="submit">Entrar</button>
+      <button class="link-btn" type="button" id="esqueci">Esqueci minha senha</button>
+    </form>
+
+    <form class="form" data-form="criar" id="f-criar" hidden>
+      <h1>Cria sua conta</h1>
+      <p class="muted">Grátis. Leva 20 segundos.</p>
+      <label>Nome<input type="text" name="nome" required maxlength="80" autocomplete="name"></label>
+      <label>E-mail<input type="email" name="email" required autocomplete="email"></label>
+      <label>Senha<input type="password" name="senha" required minlength="8" autocomplete="new-password" placeholder="mínimo 8 caracteres"></label>
+      <button class="btn btn-lg full" type="submit">Criar conta</button>
+    </form>
+
+    <div class="sent" id="confirme" hidden>
+      <div class="sent-ic">✉</div><h2>Confirme seu e-mail</h2>
+      <p class="muted">Mandamos um link pra <b id="conf-email"></b>. Clica nele e volta aqui pra entrar.</p>
+    </div>
+  </section>
+</main>
+
+
+<script src="/assets/site.js?v=202611051103"></script>
+
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const destino = (q.get('proximo') || '/app').startsWith('/app') ? (q.get('proximo') || '/app') : '/app';
+  const alerta = document.getElementById('alerta');
+  const erro = t => { alerta.textContent = t; alerta.hidden = false; };
+  const trocar = modo => {
+    document.querySelectorAll('.tabs-auth button').forEach(b => b.classList.toggle('on', b.dataset.modo === modo));
+    document.querySelectorAll('[data-form]').forEach(f => f.hidden = f.dataset.form !== modo);
+    alerta.hidden = true;
+  };
+  document.querySelectorAll('.tabs-auth button').forEach(b => b.onclick = () => trocar(b.dataset.modo));
+  if (q.get('modo') === 'criar') trocar('criar');
+  VZ.sessao().then(s => { if (s) location.replace(destino); });
+
+  const ocupado = (f, on) => { const b = f.querySelector('[type=submit]'); b.disabled = on; b.dataset.t ??= b.textContent; b.textContent = on ? 'Aguarde...' : b.dataset.t; };
+
+  document.getElementById('f-entrar').onsubmit = async e => {
+    e.preventDefault(); const f = e.target; ocupado(f, true); alerta.hidden = true;
+    const { error } = await VZ.sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.senha.value });
+    ocupado(f, false);
+    if (error) return erro(VZ.erroPt(error));
+    location.replace(destino);
+  };
+
+  document.getElementById('f-criar').onsubmit = async e => {
+    e.preventDefault(); const f = e.target; ocupado(f, true); alerta.hidden = true;
+    const email = f.email.value.trim();
+    const { data, error } = await VZ.sb.auth.signUp({ email, password: f.senha.value,
+      options: { data: { nome: f.nome.value.trim() }, emailRedirectTo: location.origin + '/entrar' } });
+    ocupado(f, false);
+    if (error) return erro(VZ.erroPt(error));
+    if (data.session) return location.replace('/app');
+    document.querySelectorAll('[data-form],.tabs-auth').forEach(x => x.hidden = true);
+    document.getElementById('conf-email').textContent = email;
+    document.getElementById('confirme').hidden = false;
+  };
+
+  document.getElementById('esqueci').onclick = async () => {
+    const email = document.querySelector('#f-entrar [name=email]').value.trim();
+    if (!email) return erro('Digite seu e-mail no campo acima primeiro.');
+    const { error } = await VZ.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/entrar' });
+    if (error) return erro(VZ.erroPt(error));
+    VZ.toast('Se o e-mail existir, mandamos um link pra trocar a senha.');
+  };
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+yt-dlp
+faster-whisper
+numpy
+requests
+boto3
+python-dotenv
+jinja2
+flask
+psycopg[binary]

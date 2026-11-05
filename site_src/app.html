@@ -1,0 +1,145 @@
+{% extends "base_app.html" %}
+{% block conteudo %}
+<main class="wrap">
+<section class="hero"><h1>Seu <span class="grad">estúdio</span> de cortes</h1>
+<p>Grave o chat durante a live, cole o link do VOD e os cortes aparecem aqui prontos pra postar.</p></section>
+<div class="stats">
+ <div class="stat"><div class="num" id="s-lives">0</div><div class="lbl">lives processadas</div></div>
+ <div class="stat"><div class="num" id="s-cortes">0</div><div class="lbl">cortes gerados</div></div>
+ <div class="stat"><div class="num" id="s-post">0</div><div class="lbl">cortes postados</div></div>
+ <div class="stat"><div class="num" id="s-fila">0</div><div class="lbl">esperando postagem</div></div>
+</div>
+<div class="cols">
+ <section class="card"><h2><span class="step">1</span>Durante a live</h2>
+  <p class="desc">O notebook grava o chat da Twitch pra achar os momentos que mais bombaram.</p>
+  <div class="live-st"><div class="big-dot" id="dot"></div><div style="flex:1"><b id="st-chat">Parado</b>
+   <div class="meta" id="st-chat2">Inicie antes de entrar ao vivo</div></div></div>
+  <div class="fld"><label class="f" for="canal">Seu canal na Twitch</label><input type="text" id="canal" placeholder="ex: leozinrwz" maxlength="40"></div>
+  <button class="btn full" id="b-chat">Iniciar gravação</button>
+  <p class="hint">Rolou algo absurdo? Digite <b>#corte</b> no chat pelo celular, o corte é garantido.</p>
+ </section>
+ <section class="card"><h2><span class="step">2</span>Depois da live</h2>
+  <p class="desc">Cole o link do VOD. O notebook baixa, encontra os melhores momentos e gera tudo sozinho.</p>
+  <div class="fld"><label class="f" for="fonte">Link do VOD</label><input type="text" id="fonte" placeholder="https://www.twitch.tv/videos/123456789"></div>
+  <div class="fld"><label class="f" for="selchat">Chat gravado dessa live</label><select id="selchat"></select></div>
+  <div class="row" style="justify-content:space-between">
+   <div class="row"><label class="chk"><input type="checkbox" id="teste">Teste rápido (10 min)</label>
+   <label class="chk"><input type="checkbox" id="semlongo">Sem vídeo longo</label></div>
+   <button class="btn" id="b-proc">Gerar cortes</button>
+  </div>
+  <div class="fila" id="fila"></div>
+ </section>
+</div>
+<div class="sec-h"><h2>Suas lives</h2></div>
+<div class="lives" id="lives"></div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+const ETAPAS = ["Baixando o VOD","Analisando o áudio","Lendo o chat","Escolhendo momentos","Gerando cortes","Vídeo longo","Enviando"];
+let G = [], L = [], C = [], primeira = true;
+try { $('#canal').value = localStorage.getItem('vz_canal') || ''; } catch (e) {}
+
+$('#b-chat').onclick = async () => {
+  const ativa = G.find(g => ['pedido', 'gravando'].includes(g.status));
+  if (ativa) {
+    const { error } = await VZ.sb.from('gravacoes_chat').update({ status: 'parar' }).eq('id', ativa.id);
+    if (error) return toast(VZ.erroPt(error));
+    toast('Parando a gravação...');
+  } else {
+    const canal = $('#canal').value.trim().toLowerCase().replace(/^[@#]/, '');
+    if (!canal) return toast('Digite o nome do seu canal');
+    try { localStorage.setItem('vz_canal', canal); } catch (e) {}
+    const { error } = await VZ.sb.from('gravacoes_chat').insert({ canal });
+    if (error) return toast(VZ.erroPt(error));
+    toast('Pedido enviado pro notebook!');
+  }
+  carregar();
+};
+
+$('#b-proc').onclick = async () => {
+  const fonte = $('#fonte').value.trim();
+  if (!/^https:\/\/(www\.)?twitch\.tv\/videos\/\d+/i.test(fonte)) return toast('Cole um link de VOD da Twitch (twitch.tv/videos/...)');
+  const { error } = await VZ.sb.from('lives').insert({
+    fonte, gravacao_id: $('#selchat').value || null, teste: $('#teste').checked, sem_longo: $('#semlongo').checked });
+  if (error) return toast(VZ.erroPt(error));
+  $('#fonte').value = ''; toast('Na fila! O notebook vai começar.');
+  carregar();
+};
+
+async function acao(id, status) {
+  const { error } = await VZ.sb.from('lives').update({ status }).eq('id', id);
+  if (error) toast(VZ.erroPt(error)); carregar();
+}
+async function excluir(id) {
+  if (!confirm('Excluir essa live e todos os cortes dela?')) return;
+  const { error } = await VZ.sb.from('lives').delete().eq('id', id);
+  if (error) return toast(VZ.erroPt(error));
+  toast('Excluída'); carregar();
+}
+
+function render() {
+  // chat
+  const ativa = G.find(g => ['pedido', 'gravando', 'parar'].includes(g.status));
+  const grav = ativa && ativa.status === 'gravando';
+  $('#dot').className = 'big-dot' + (grav ? ' on' : '');
+  $('#st-chat').textContent = !ativa ? 'Parado' : ativa.status === 'pedido' ? 'Esperando o notebook...' : ativa.status === 'parar' ? 'Parando...' : 'Gravando #' + ativa.canal;
+  $('#st-chat2').textContent = grav ? `${ativa.mensagens} mensagens · ${ativa.marcadores} #corte` : ativa ? 'O notebook precisa estar ligado' : 'Inicie antes de entrar ao vivo';
+  $('#b-chat').textContent = ativa ? 'Parar gravação' : 'Iniciar gravação';
+  $('#b-chat').className = 'btn full' + (ativa ? ' sec' : '');
+  const sel = $('#selchat'), v = sel.value;
+  const ops = G.filter(g => g.status !== 'erro');
+  sel.innerHTML = '<option value="">Sem chat (só pelo áudio)</option>' + ops.map(g =>
+    `<option value="${g.id}">#${esc(g.canal)} · ${new Date(g.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · ${g.mensagens} msgs</option>`).join('');
+  sel.value = primeira && ops.length ? ops[0].id : v;
+
+  // fila / progresso
+  const ativos = L.filter(l => ['fila', 'processando', 'cancelar'].includes(l.status));
+  $('#fila').innerHTML = ativos.map(l => {
+    const pct = l.status === 'fila' ? 0 : Math.max(2, Math.round((Math.max(1, l.etapa) - 1) / 7 * 100));
+    const txt = l.status === 'fila' ? 'Na fila, esperando o notebook' : l.status === 'cancelar' ? 'Cancelando...' : (l.etapa_texto || 'Começando') + (l.detalhe ? ' · ' + l.detalhe : '');
+    return `<div class="prog"><div class="prog-top"><span>${esc(txt)}</span><span>${pct}%</span></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="etapas">${ETAPAS.map((e, i) => `<span class="${i + 1 < l.etapa ? 'feito' : i + 1 == l.etapa && l.status == 'processando' ? 'agora' : ''}">${e}</span>`).join('')}</div>
+      <div class="row" style="justify-content:space-between;margin-top:10px"><span class="meta">${esc(l.fonte.replace('https://www.', ''))}</span>
+      ${l.status !== 'cancelar' ? `<button class="btn dang sm" onclick="acao('${l.id}','cancelar')">Cancelar</button>` : ''}</div></div>`;
+  }).join('');
+
+  // números
+  const prontas = L.filter(l => l.status === 'pronto');
+  const vivos = C.filter(c => !c.descartado), post = vivos.filter(c => c.tiktok || c.shorts || c.reels).length;
+  $('#s-lives').textContent = prontas.length; $('#s-cortes').textContent = C.length;
+  $('#s-post').textContent = post; $('#s-fila').textContent = vivos.length - post;
+
+  // grade de lives
+  const outras = L.filter(l => !['fila', 'processando', 'cancelar'].includes(l.status));
+  const html = outras.length ? outras.map(l => {
+    const cs = C.filter(c => c.live_id === l.id), p = cs.filter(c => c.tiktok || c.shorts || c.reels).length;
+    const capa = cs.find(c => c.video_url);
+    const tag = l.status === 'pronto' ? `<span class="tag">${cs.length} cortes</span>` : l.status === 'erro' ? '<span class="tag warn">deu erro</span>' : '<span class="tag warn">cancelada</span>';
+    return `<article class="lv"><a class="capa" href="${l.status === 'pronto' ? '/app/live?id=' + l.id : '#'}">
+      ${capa ? `<video src="${esc(capa.video_url)}#t=8" preload="metadata" muted></video>` : ''}${tag}</a>
+      <div class="body"><h3 title="${esc(l.titulo || '')}">${esc(l.titulo || l.fonte.split('/').pop())}</h3>
+      <div class="meta">${esc(l.canal || '')}${l.canal ? ' · ' : ''}${new Date(l.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+      ${l.status === 'erro' && l.erro ? `<div class="meta" style="color:#ff8a9a">${esc(l.erro.slice(0, 140))}</div>` : ''}
+      <div class="row">${cs.length ? `<span class="tag ${p === cs.length ? 'ok' : ''}">${p}/${cs.length} postados</span>` : ''}${l.longo_url ? `<span class="tag ${l.longo_postado ? 'ok' : ''}">YouTube ${l.longo_postado ? '✓' : 'pronto'}</span>` : ''}</div>
+      <div class="acts">${l.status === 'pronto' ? `<a class="btn sm" href="/app/live?id=${l.id}" style="flex:1">Ver cortes</a>` : `<button class="btn sm sec" style="flex:1" onclick="acao('${l.id}','fila')">Tentar de novo</button>`}
+      <button class="btn sm dang" onclick="excluir('${l.id}')">Excluir</button></div></div></article>`;
+  }).join('') : '<div class="empty" style="grid-column:1/-1">Nenhuma live ainda. Grave o chat, faça sua live e cole o link do VOD aqui em cima.</div>';
+  if (html !== render._k) { $('#lives').innerHTML = html; render._k = html; }
+  primeira = false;
+}
+
+async function carregar() {
+  const [g, l, c] = await Promise.all([
+    VZ.sb.from('gravacoes_chat').select('*').order('criado_em', { ascending: false }).limit(20),
+    VZ.sb.from('lives').select('*').order('criado_em', { ascending: false }).limit(60),
+    VZ.sb.from('cortes').select('id,live_id,n,video_url,tiktok,shorts,reels,descartado').order('n'),
+  ]);
+  const err = g.error || l.error || c.error;
+  if (err) return toast(VZ.erroPt(err));
+  G = g.data; L = l.data; C = c.data; render();
+}
+PRONTO.then(() => { carregar(); setInterval(carregar, 4000); });
+</script>
+{% endblock %}

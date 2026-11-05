@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viraliza · Sua live vira viral</title>
+<meta name="description" content="Viraliza transforma sua live em cortes virais para TikTok, Shorts e Reels, com legenda automática.">
+<link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=202611051103">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
+<script src="/assets/config.js?v=202611051103"></script>
+<script src="/assets/viraliza.js?v=202611051103"></script>
+</head>
+<body class="">
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="32" height="32"><span>viraliza</span></a>
+  <nav class="nav-links">
+    <a href="/#como">Como funciona</a>
+    <a href="/#recursos">Recursos</a>
+    <a href="/contato">Contato</a>
+  </nav>
+  <div class="nav-cta">
+    <a class="link" href="/entrar" data-anon>Entrar</a>
+    <a class="btn" href="/entrar?modo=criar" data-anon>Começar grátis</a>
+    <a class="btn" href="/app" data-auth hidden>Abrir painel</a>
+  </div>
+</header>
+
+
+<main>
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-txt">
+    <span class="eyebrow"><i class="pulse"></i> Pronto pro GTA 6</span>
+    <h1>Sua live vira<br><span class="rot" id="rot"><span class="grad">viral.</span></span></h1>
+    <p class="lead">O Viraliza assiste sua live, acha os momentos que fizeram o chat explodir e entrega cortes verticais legendados pra <b>TikTok, Shorts e Reels</b>. Você só posta.</p>
+    <div class="hero-cta">
+      <a class="btn btn-lg" href="/entrar?modo=criar">Começar grátis <span class="arrow">→</span></a>
+      <a class="btn btn-lg ghost" href="#como">Ver como funciona</a>
+    </div>
+    <ul class="proof">
+      <li><b>15</b> cortes por live</li>
+      <li><b>0</b> minutos editando</li>
+      <li><b>9:16</b> com legenda</li>
+    </ul>
+  </div>
+
+  <div class="stage" id="stage" aria-hidden="true">
+    <!-- janela da live -->
+    <div class="live-win">
+      <div class="lw-bar"><span class="badge-live">AO VIVO</span><span class="lw-title">GTA 6 · roubo na praia 💰</span><span class="lw-views">👁 <b id="viewers">1.284</b></span></div>
+      <div class="lw-body">
+        <div class="scene" data-scene="wide"></div>
+        <div class="lw-chat" id="chat"></div>
+      </div>
+      <div class="lw-graph">
+        <svg viewBox="0 0 300 44" preserveAspectRatio="none"><path id="spark" d="" /></svg>
+        <span class="spike-tag" id="spikeTag">🔥 pico no chat</span>
+      </div>
+    </div>
+
+    <!-- feixe que leva o corte até o celular -->
+    <svg class="beam" viewBox="0 0 200 200" preserveAspectRatio="none"><path d="M10 40 C 90 30, 120 120, 190 150"/></svg>
+    <div class="fly-clip"></div>
+
+    <!-- celular -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="scene" data-scene="tall"></div>
+          <div class="ph-top"><span>Seguindo</span><b>Para você</b></div>
+          <div class="caption" id="caption"></div>
+          <div class="ph-side">
+            <div class="av"></div>
+            <div class="ic heart" id="heart">♥<small id="likes">12,4 mil</small></div>
+            <div class="ic">💬<small>842</small></div>
+            <div class="ic">↗<small>1,2 mil</small></div>
+          </div>
+          <div class="ph-info"><b>@leozinrwz</b><span>quando o plano dá MUITO errado 😂 #gta6 #fyp</span></div>
+          <div class="ph-prog"><i></i></div>
+        </div>
+      </div>
+      <div class="phone-shadow"></div>
+    </div>
+
+    <!-- chips flutuantes -->
+    <div class="chip c1"><span class="dot ok"></span>Corte #7 pronto</div>
+    <div class="chip c2">▲ <b id="views">+48,2 mil</b> views</div>
+    <div class="chip c3">⭐ #corte marcado</div>
+  </div>
+</section>
+
+<!-- ================= FAIXA ================= -->
+<div class="marquee" aria-hidden="true"><div class="mq-track">
+  <span>TWITCH</span><i>✦</i><span>TIKTOK</span><i>✦</i><span>YOUTUBE SHORTS</span><i>✦</i><span>REELS</span><i>✦</i><span>GTA 6</span><i>✦</i><span>LEGENDA AUTOMÁTICA</span><i>✦</i><span>9:16</span><i>✦</i><span>TWITCH</span><i>✦</i><span>TIKTOK</span><i>✦</i><span>YOUTUBE SHORTS</span><i>✦</i><span>REELS</span><i>✦</i><span>GTA 6</span><i>✦</i><span>LEGENDA AUTOMÁTICA</span><i>✦</i><span>9:16</span><i>✦</i>
+</div></div>
+
+<!-- ================= COMO FUNCIONA ================= -->
+<section class="sec" id="como">
+  <div class="sec-head reveal"><span class="eyebrow">Como funciona</span><h2>Da live pro feed em <span class="grad">3 passos</span></h2></div>
+  <div class="steps">
+    <article class="step reveal">
+      <div class="step-n">01</div>
+      <div class="step-vis v-chat"><div class="rec"><i class="pulse"></i>gravando chat</div>
+        <div class="bubbles"><span>kkkkkkkk</span><span>CLIPA ISSO</span><span class="hl">#corte</span><span>MDS 😱</span></div></div>
+      <h3>Grava o chat da live</h3>
+      <p>Liga o Viraliza antes de entrar ao vivo. Rolou algo absurdo? Digita <b>#corte</b> no chat pelo celular.</p>
+    </article>
+    <article class="step reveal">
+      <div class="step-n">02</div>
+      <div class="step-vis v-link"><div class="fake-input"><span class="typed" data-type="twitch.tv/videos/2919844747"></span><i class="caret"></i></div>
+        <div class="fake-bar"><i></i></div><small class="fake-lbl">achando os melhores momentos...</small></div>
+      <h3>Cola o link do VOD</h3>
+      <p>Ele baixa a live, cruza o volume da sua voz com a reação do chat e escolhe os picos.</p>
+    </article>
+    <article class="step reveal">
+      <div class="step-n">03</div>
+      <div class="step-vis v-post"><div class="mini m1"></div><div class="mini m2"></div><div class="mini m3"></div></div>
+      <h3>Baixa e posta</h3>
+      <p>Cortes 9:16 com legenda, título sugerido e MP4 pronto. Marca onde já postou e não se perde.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ================= RECURSOS ================= -->
+<section class="sec" id="recursos">
+  <div class="sec-head reveal"><span class="eyebrow">Recursos</span><h2>Tudo que um corte <span class="grad">precisa pra viralizar</span></h2></div>
+  <div class="bento">
+    <article class="cell big reveal">
+      <h3>Legenda que prende o olho</h3>
+      <p>Palavra por palavra, em destaque, do jeito que o algoritmo gosta. Transcrição automática em português.</p>
+      <div class="karaoke" id="karaoke"></div>
+    </article>
+    <article class="cell reveal">
+      <h3>Detecção por chat + áudio</h3>
+      <p>Grito, risada e chat explodindo viram nota. Só os picos viram corte.</p>
+      <div class="bars" id="bars"></div>
+    </article>
+    <article class="cell reveal">
+      <h3>Marcador #corte</h3>
+      <p>Você manda no celular, o momento entra garantido.</p>
+      <div class="hash">#corte</div>
+    </article>
+    <article class="cell reveal">
+      <h3>Vertical automático</h3>
+      <p>Gameplay centralizado com fundo desfocado. Zero crop manual.</p>
+      <div class="ratio"><div class="r169">16:9</div><span>→</span><div class="r916">9:16</div></div>
+    </article>
+    <article class="cell reveal">
+      <h3>Vídeo longo pro YouTube</h3>
+      <p>Os melhores momentos em sequência, de 10 a 35 minutos.</p>
+      <div class="yt-bar"><i></i><i></i><i></i><i></i><i></i></div>
+    </article>
+    <article class="cell reveal">
+      <h3>Baixa em MP4</h3>
+      <p>Arquivo já com nome do título. É só arrastar pro app.</p>
+      <div class="dl"><span>viraliza_07_plano_deu_errado.mp4</span><b>↓</b></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= NÚMEROS ================= -->
+<section class="nums reveal">
+  <div><b data-count="15">0</b><span>cortes por live</span></div>
+  <div><b data-count="55" data-suf="s">0</b><span>duração ideal</span></div>
+  <div><b data-count="3">0</b><span>redes de uma vez</span></div>
+  <div><b data-count="0" data-suf=" min">0</b><span>editando</span></div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="cta reveal">
+  <div class="cta-in">
+    <div class="cta-txt">
+      <h2>Chega de editar.<br>Começa a <span class="under">postar</span>.</h2>
+      <p>O GTA 6 tá chegando. Quem posta primeiro, cresce primeiro.</p>
+      <a class="btn btn-lg light" href="/entrar?modo=criar">Criar minha conta <span class="arrow">→</span></a>
+    </div>
+    <div class="fan" aria-hidden="true">
+      <div class="fphone f1"><div class="scene" data-scene="tall" data-hue="40"></div></div>
+      <div class="fphone f2"><div class="scene" data-scene="tall"></div></div>
+      <div class="fphone f3"><div class="scene" data-scene="tall" data-hue="-40"></div></div>
+    </div>
+  </div>
+</section>
+</main>
+
+
+<footer class="foot">
+  <div class="foot-in">
+    <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
+    <p>Da live pro feed, sem editar nada.</p>
+    <nav><a href="/">Início</a><a href="/#como">Como funciona</a><a href="/contato">Contato</a><a href="/entrar">Entrar</a></nav>
+    <small>© 2026 Viraliza</small>
+  </div>
+</footer>
+
+<script src="/assets/site.js?v=202611051103"></script>
+
+</body>
+</html>

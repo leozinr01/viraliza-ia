@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Contato · Viraliza{% endblock %}
+{% block conteudo %}
+<main class="contato">
+  <section class="ct-info">
+    <span class="eyebrow">Contato</span>
+    <h1>Bora <span class="grad">conversar</span>.</h1>
+    <p class="lead">Dúvida, ideia, parceria ou bug? Manda aqui que a gente responde.</p>
+    <div class="faq">
+      <details open><summary>Funciona com live do PS5?</summary><p>Sim. Você faz a live direto do console pra Twitch e cola o link do VOD no Viraliza depois. Não precisa de placa de captura.</p></details>
+      <details><summary>Preciso saber editar vídeo?</summary><p>Não. Os cortes saem prontos: vertical, com legenda e título sugerido. Você só revisa e posta.</p></details>
+      <details><summary>Quais redes posso usar?</summary><p>TikTok, YouTube Shorts e Reels para os cortes, e YouTube para o vídeo longo.</p></details>
+      <details><summary>Serve pra outros jogos?</summary><p>Serve pra qualquer live. A detecção usa sua voz e o chat, não o jogo.</p></details>
+    </div>
+  </section>
+
+  <section class="ct-form">
+    {% if enviado %}
+      <div class="sent"><div class="sent-ic">✓</div><h2>Mensagem enviada!</h2><p class="muted">Valeu pelo contato. A gente responde no e-mail que você deixou.</p>
+      <a class="btn" href="/">Voltar pro início</a></div>
+    {% else %}
+      <form method="post" class="form">
+        {% if erro %}<div class="alert">{{ erro }}</div>{% endif %}
+        <div class="two">
+          <label>Nome<input type="text" name="nome" required value="{{ dados.get('nome','') }}"></label>
+          <label>E-mail<input type="email" name="email" required value="{{ dados.get('email','') }}"></label>
+        </div>
+        <label>Assunto
+          <select name="assunto">
+            {% for a in ['Dúvida', 'Sugestão', 'Parceria', 'Problema técnico', 'Outro'] %}
+            <option {{ 'selected' if dados.get('assunto') == a }}>{{ a }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Mensagem<textarea name="mensagem" rows="6" required placeholder="Conta pra gente...">{{ dados.get('mensagem','') }}</textarea></label>
+        <button class="btn btn-lg full" type="submit">Enviar mensagem <span class="arrow">→</span></button>
+      </form>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,23 @@
+﻿VIRALIZA — como usar
+======================
+
+JEITO FÁCIL: rode  python painel.py  e use tudo pelo navegador (http://localhost:5000).
+
+0) Uma vez só: abra config.py e coloque o nome do seu canal em CANAL.
+
+1) ANTES de começar a live (no notebook):
+     cd C:\Users\lucas\viraliza
+     python gravar_chat.py
+   Deixe aberto a live inteira. Quando rolar algo bom, digite  #corte  no chat pelo celular.
+
+2) DEPOIS da live (o VOD aparece em twitch.tv/SEU_CANAL/videos):
+     python cortes.py https://www.twitch.tv/videos/NUMERO --chat chats\ARQUIVO_DA_LIVE.jsonl
+
+   Pra testar rápido só com os primeiros 10 minutos:  --teste 10
+   Só os verticais, sem o vídeo longo:  --sem-longo
+
+3) Abra trabalho\<pasta>\revisao.html, assista e escolha o que postar.
+   Verticais: trabalho\<pasta>\verticais\corte_XX\corte.mp4
+   YouTube:   trabalho\<pasta>\youtube_longo.mp4
+
+Ajustes (config.py): quantidade de cortes, duração, zoom do vertical, duração do vídeo longo.

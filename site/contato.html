@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contato · Viraliza</title>
+<meta name="description" content="Viraliza transforma sua live em cortes virais para TikTok, Shorts e Reels, com legenda automática.">
+<link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=202611051103">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
+<script src="/assets/config.js?v=202611051103"></script>
+<script src="/assets/viraliza.js?v=202611051103"></script>
+</head>
+<body class="">
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="32" height="32"><span>viraliza</span></a>
+  <nav class="nav-links">
+    <a href="/#como">Como funciona</a>
+    <a href="/#recursos">Recursos</a>
+    <a href="/contato">Contato</a>
+  </nav>
+  <div class="nav-cta">
+    <a class="link" href="/entrar" data-anon>Entrar</a>
+    <a class="btn" href="/entrar?modo=criar" data-anon>Começar grátis</a>
+    <a class="btn" href="/app" data-auth hidden>Abrir painel</a>
+  </div>
+</header>
+
+
+<main class="contato">
+  <section class="ct-info">
+    <span class="eyebrow">Contato</span>
+    <h1>Bora <span class="grad">conversar</span>.</h1>
+    <p class="lead">Dúvida, ideia, parceria ou bug? Manda aqui que a gente responde.</p>
+    <div class="faq">
+      <details open><summary>Funciona com live do PS5?</summary><p>Sim. Você faz a live direto do console pra Twitch e cola o link do VOD no Viraliza depois. Não precisa de placa de captura.</p></details>
+      <details><summary>Preciso saber editar vídeo?</summary><p>Não. Os cortes saem prontos: vertical, com legenda e título sugerido. Você só revisa e posta.</p></details>
+      <details><summary>Quais redes posso usar?</summary><p>TikTok, YouTube Shorts e Reels para os cortes, e YouTube para o vídeo longo.</p></details>
+      <details><summary>Serve pra outros jogos?</summary><p>Serve pra qualquer live. A detecção usa sua voz e o chat, não o jogo.</p></details>
+    </div>
+  </section>
+
+  <section class="ct-form">
+    <form class="form" id="f-contato">
+      <div class="alert" id="alerta" hidden></div>
+      <div class="two">
+        <label>Nome<input type="text" name="nome" required maxlength="120"></label>
+        <label>E-mail<input type="email" name="email" required maxlength="200"></label>
+      </div>
+      <label>Assunto
+        <select name="assunto"><option>Dúvida</option><option>Sugestão</option><option>Parceria</option><option>Problema técnico</option><option>Outro</option></select>
+      </label>
+      <label>Mensagem<textarea name="mensagem" rows="6" required maxlength="5000" placeholder="Conta pra gente..."></textarea></label>
+      <button class="btn btn-lg full" type="submit">Enviar mensagem <span class="arrow">→</span></button>
+    </form>
+    <div class="sent" id="enviado" hidden><div class="sent-ic">✓</div><h2>Mensagem enviada!</h2>
+      <p class="muted">Valeu pelo contato. A gente responde no e-mail que você deixou.</p><a class="btn" href="/">Voltar pro início</a></div>
+  </section>
+</main>
+
+
+<footer class="foot">
+  <div class="foot-in">
+    <a class="logo" href="/"><img src="/assets/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
+    <p>Da live pro feed, sem editar nada.</p>
+    <nav><a href="/">Início</a><a href="/#como">Como funciona</a><a href="/contato">Contato</a><a href="/entrar">Entrar</a></nav>
+    <small>© 2026 Viraliza</small>
+  </div>
+</footer>
+
+<script src="/assets/site.js?v=202611051103"></script>
+
+<script>
+document.getElementById('f-contato').onsubmit = async e => {
+  e.preventDefault();
+  const f = e.target, b = f.querySelector('[type=submit]'), al = document.getElementById('alerta');
+  b.disabled = true; al.hidden = true;
+  const { error } = await VZ.sb.from('contatos').insert({
+    nome: f.nome.value.trim(), email: f.email.value.trim(), assunto: f.assunto.value, mensagem: f.mensagem.value.trim() });
+  b.disabled = false;
+  if (error) { al.textContent = VZ.erroPt(error); al.hidden = false; return; }
+  f.hidden = true; document.getElementById('enviado').hidden = false;
+};
+</script>
+
+</body>
+</html>

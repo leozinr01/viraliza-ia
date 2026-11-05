@@ -1,0 +1,14 @@
+# segredos
+.env
+.chave_sessao
+preferencias.json
+viraliza.db
+# dados e vídeos
+trabalho/
+chats/
+*.mp4
+*.part
+# python
+__pycache__/
+*.pyc
+.venv/
