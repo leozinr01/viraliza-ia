@@ -1,6 +1,6 @@
 {% extends "base_app.html" %}
 {% block titulo %}Cortes · Viraliza{% endblock %}
-
+{% block nav_painel %}{% endblock %}{% block nav_cortes %}on{% endblock %}
 {% block conteudo %}
 <header class="pagebar"><div><div class="crumb"><a href="/app">Estúdio</a> <span>/</span> <a href="/app#lives-h">Lives recentes</a></div><h1 id="titulo">Carregando...</h1><div class="meta" id="sub"></div></div>
  <a class="btn sec" href="/app"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Voltar</a></header>
@@ -33,8 +33,6 @@ const ID = new URLSearchParams(location.search).get('id');
 const REDES = { tiktok: 'TikTok', shorts: 'Shorts', reels: 'Reels' };
 let LIVE, CS = [], filtro = 'todos';
 const porN = n => CS.find(c => c.n == n);
-const postado = c => c.tiktok || c.shorts || c.reels;
-const expirou = t => t && new Date(t) < new Date();
 
 async function salvar(c, d) {
   Object.assign(c, d);
@@ -48,11 +46,12 @@ function filtrar() {
   });
   $('#cnt').textContent = `· ${CS.filter(postado).length} de ${CS.length} postados`;
 }
-document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); filtro = b.dataset.f; filtrar();
-});
+function mudarFiltro(f) {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.f === f)); filtro = f; filtrar();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => mudarFiltro(b.dataset.f));
 function card(c) {
-  const exp = expirou(c.expira_em) || !c.video_url;
+  const exp = expirou(c);
   return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}" id="c${c.n}">
   <div class="vid">${exp ? '<div class="expirado">Vídeo expirou<br>(apagado depois de 7 dias)</div>' : `<video src="${esc(c.video_url)}" controls preload="metadata"></video>`}
   <div class="tags"><span class="tag">#${c.n} · ${hms(c.inicio)}</span>${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : `<span class="tag">🔥 ${(c.nota || 0).toFixed(1)}</span>`}</div></div>
@@ -160,9 +159,9 @@ PRONTO.then(async () => {
   if (!l.data) { $('#titulo').textContent = 'Live não encontrada'; return; }
   LIVE = l.data; CS = c.data;
   document.title = (LIVE.titulo || 'Live') + ' · Viraliza';
-  $('#titulo').textContent = LIVE.titulo || 'Live ' + LIVE.fonte.split(/[/=]/).pop();
+  $('#titulo').textContent = LIVE.titulo || 'Live ' + nomeLive(LIVE);
   $('#sub').textContent = [LIVE.canal, new Date(LIVE.criado_em).toLocaleString('pt-BR'), CS.length + ' cortes'].filter(Boolean).join(' · ');
-  if (LIVE.longo_url && !expirou(LIVE.expira_em)) {
+  if (LIVE.longo_url && !venceu(LIVE.expira_em)) {
     $('#yt').hidden = false; $('#ytv').src = LIVE.longo_url;
     $('#yt-dl').href = LIVE.longo_download_url; $('#yt-dl').innerHTML = ICON_DL + ' Baixar MP4';
     const yb = $('#yt-post'), sy = () => { yb.classList.toggle('on', LIVE.longo_postado); yb.textContent = LIVE.longo_postado ? '✓ Postado no YouTube' : 'Marcar como postado'; };
@@ -176,7 +175,9 @@ PRONTO.then(async () => {
   if (LIVE.expira_em) $('#aviso').textContent = 'Os vídeos ficam disponíveis até ' + new Date(LIVE.expira_em).toLocaleString('pt-BR') + '. Baixe antes disso.';
   $('#grid').innerHTML = CS.map(card).join(''); filtrar();
   const alvoN = location.hash.match(/^#c(\d+)$/), alvoEl = alvoN && $('#c' + alvoN[1]);
-  if (alvoEl) { alvoEl.hidden = false; alvoEl.scrollIntoView({ block: 'center' }); alvoEl.classList.add('foco'); }
+  // corte descartado não aparece em "Todos": abre a aba onde ele está, em vez de forçar ele visível
+  if (alvoEl && alvoEl.hidden) mudarFiltro(porN(alvoN[1]).descartado ? 'desc' : 'todos');
+  if (alvoEl) { alvoEl.scrollIntoView({ block: 'center' }); alvoEl.classList.add('foco'); }
   const con = await VZ.sb.from('conexoes').select('plataforma,conta_nome');
   CONS = con.data || [];
   carregarPubs();

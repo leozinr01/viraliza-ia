@@ -8,7 +8,7 @@
   <h1>Meus cortes</h1>
   <p class="meta" id="resumo">Todos os vídeos que você já cortou, de todas as lives.</p>
  </div>
- <a class="btn btn-lg" href="/app#acao"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo processamento</a>
+ <a class="btn btn-lg" href="/app#novo"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo processamento</a>
 </header>
 
 <section class="bib-bar" aria-label="Filtros">
@@ -50,11 +50,6 @@ const REDES = { tiktok: 'TikTok', shorts: 'Shorts', reels: 'Reels' };
 const IC_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>';
 const POR_PAG = 24;
 let CS = [], LV = {}, filtro = 'todos', limite = POR_PAG;
-const postado = c => c.tiktok || c.shorts || c.reels;
-const expirou = c => !c.video_url || (c.expira_em && new Date(c.expira_em) < new Date());
-const mmss = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
-const nomeLive = l => l ? (l.titulo || l.fonte.split(/[/=]/).pop()) : 'Live';
 const tituloDe = c => (c.titulo || '').trim() || `Corte #${c.n} · ${nomeLive(LV[c.live_id])}`;
 const sem = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const linkPub = c => `/app/live?id=${c.live_id}#c${c.n}`;
@@ -104,7 +99,7 @@ function render() {
     : `<div class="vazio bib-vazio"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>
        <b>${filtrando ? 'Nenhum corte encontrado' : 'Você ainda não tem cortes'}</b>
        <span>${filtrando ? 'Tente outro filtro ou outra busca.' : 'Grave o chat, faça sua live e cole o link do VOD no painel.'}</span>
-       ${filtrando ? '' : '<a class="btn out" href="/app#acao" style="margin-top:14px">Gerar meus primeiros cortes</a>'}</div>`;
+       ${filtrando ? '' : '<a class="btn out" href="/app#novo" style="margin-top:14px">Gerar meus primeiros cortes</a>'}</div>`;
   const lv = LV[$('#f-live').value];
   $('#longo').hidden = !(lv && lv.longo_url);
   if (lv && lv.longo_url) $('#longo').innerHTML = `<span class="dcard-ic"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg></span>
@@ -130,10 +125,14 @@ $('#bib').addEventListener('click', async e => {
   const c = CS.find(x => x.id === b.closest('.bc').dataset.id); if (!c) return;
   if (b.dataset.a === 'ver') abrirV(c);
   else if (b.dataset.a === 'desc') {
-    c.descartado = !c.descartado; render();
-    const { error } = await VZ.sb.from('cortes').update({ descartado: c.descartado }).eq('id', c.id);
-    if (error) { c.descartado = !c.descartado; render(); return toast(VZ.erroPt(error)); }
-    toast(c.descartado ? 'Corte descartado' : 'Corte restaurado');
+    // um pedido por vez: dois cliques rápidos não podem chegar fora de ordem nem desfazer o clique errado
+    if (c._salvando) return;
+    const v = !c.descartado;
+    c._salvando = true; c.descartado = v; render();
+    const { error } = await VZ.sb.from('cortes').update({ descartado: v }).eq('id', c.id);
+    c._salvando = false;
+    if (error) { c.descartado = !v; render(); return toast(VZ.erroPt(error)); }
+    toast(v ? 'Corte descartado' : 'Corte restaurado');
   }
 });
 
@@ -154,8 +153,8 @@ $('#dlg-v').addEventListener('click', e => { if (e.target === $('#dlg-v')) fecha
 
 PRONTO.then(async () => {
   const [l, c] = await Promise.all([
-    VZ.sb.from('lives').select('id,titulo,fonte,canal,criado_em,longo_url,longo_postado').order('criado_em', { ascending: false }),
-    VZ.sb.from('cortes').select('id,live_id,n,titulo,duracao,nota,marcador,video_url,download_url,expira_em,tiktok,shorts,reels,descartado,criado_em').order('criado_em', { ascending: false }),
+    todasLinhas(() => VZ.sb.from('lives').select('id,titulo,fonte,canal,criado_em,longo_url,longo_postado').order('criado_em', { ascending: false }).order('id')),
+    todasLinhas(() => VZ.sb.from('cortes').select('id,live_id,n,titulo,duracao,nota,marcador,video_url,download_url,expira_em,tiktok,shorts,reels,descartado,criado_em').order('criado_em', { ascending: false }).order('id')),
   ]);
   if (l.error || c.error) return toast(VZ.erroPt(l.error || c.error));
   LV = Object.fromEntries(l.data.map(x => [x.id, x]));

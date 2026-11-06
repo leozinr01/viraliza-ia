@@ -73,7 +73,7 @@ const ETAPAS = ["Baixando o VOD","Analisando o áudio","Lendo o chat","Escolhend
 const IC_VIDEO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z"/></svg>';
 const IC_LIXO = '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 const IC_CAL = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
-let G = [], L = [], C = [], primeira = true, todas = false;
+let G = [], L = [], CL = [], R = [], TOT = { lives: 0, cortes: 0, post: 0, pend: 0 }, primeira = true, todas = false;
 try { $('#canal').value = localStorage.getItem('vz_canal') || ''; } catch (e) {}
 PRONTO.then(s => {
   const m = s.user.user_metadata || {}, n = String(m.nome || m.full_name || m.name || '').trim().split(' ')[0];
@@ -89,7 +89,8 @@ function aba(t, foco) {
 }
 document.querySelectorAll('.seg button').forEach(b => b.onclick = () => aba(b.dataset.t));
 let abaIni = 'chat'; try { abaIni = localStorage.getItem('vz_aba') || 'chat'; } catch (e) {}
-aba(abaIni);
+// "Novo processamento" de outras páginas chega com #novo: abre direto na aba de gerar cortes
+if (location.hash === '#novo') { history.replaceState(null, '', location.pathname); aba('cortes', true); } else aba(abaIni);
 $('#ver-todas').onclick = () => { todas = !todas; render._k = null; render(); };
 
 $('#b-chat').onclick = async () => {
@@ -138,24 +139,28 @@ async function cancelar(id) {
     ? await VZ.sb.from('lives').delete().eq('id', id)
     : await VZ.sb.from('lives').update({ status: 'cancelar' }).eq('id', id);
   if (error) toast(VZ.erroPt(error)); else toast('Cancelado');
-  carregar();
+  carregar(true);
 }
 async function excluir(id) {
   if (!confirm('Excluir essa live e todos os cortes dela?')) return;
   const { error } = await VZ.sb.from('lives').delete().eq('id', id);
   if (error) return toast(VZ.erroPt(error));
-  toast('Excluída'); carregar();
+  toast('Excluída'); carregar(true);
 }
 
 // mini-gráfico dos últimos 7 dias (curva suave + área)
 const DIA = 864e5;
-function porDia(itens) {
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  const v = Array(7).fill(0);
-  itens.forEach(x => { const d = Math.round((hoje - new Date(x.criado_em).setHours(0, 0, 0, 0)) / DIA); if (d >= 0 && d < 7) v[6 - d]++; });
+const meiaNoite = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+function porDia(itens, campo = 'criado_em') {
+  const hoje = meiaNoite(), v = Array(7).fill(0);
+  itens.forEach(x => {
+    if (!x[campo]) return;
+    const d = Math.round((hoje - new Date(x[campo]).setHours(0, 0, 0, 0)) / DIA); if (d >= 0 && d < 7) v[6 - d]++;
+  });
   return v;
 }
 function spark(id, v) {
+  const k = v.join(); if (spark._c[id] === k) return; spark._c[id] = k;  // só redesenha se mudou
   const max = Math.max(...v, 1), W = 120, H = 44, pad = 5;
   const pts = v.map((y, i) => [i * W / (v.length - 1), H - pad - (y / max) * (H - pad * 2)]);
   let d = `M0,${pts[0][1]}`;
@@ -163,15 +168,13 @@ function spark(id, v) {
   $('#' + id).innerHTML = `<defs><linearGradient id="${id}-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".25"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>`
     + `<path d="${d} L${W},${H} L0,${H}Z" fill="url(#${id}-a)" stroke="none"/><path d="${d}" vector-effect="non-scaling-stroke"/>`;
 }
-function delta(id, n) {
+spark._c = {};
+// ruim = número que subir é má notícia (ex.: "Falta postar"): mostra em laranja, não em verde
+function delta(id, n, ruim) {
   const el = $('#' + id);
-  el.className = 'dl' + (n ? ' up' : '');
+  el.className = 'dl' + (n ? (ruim ? ' warn' : ' up') : '');
   el.innerHTML = n ? `<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>${n} em 7 dias` : 'nada em 7 dias';
 }
-const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
-const mmss = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-const nomeLive = l => l ? (l.titulo || l.fonte.split(/[/=]/).pop()) : '';
-const postado = c => c.tiktok || c.shorts || c.reels;
 
 function render() {
   // chat
@@ -204,18 +207,21 @@ function render() {
   $('#andamento').hidden = !ativos.length;
 
   // números + mini-gráficos
-  const prontas = L.filter(l => l.status === 'pronto');
-  const vivos = C.filter(c => !c.descartado), postados = vivos.filter(postado), pendentes = vivos.filter(c => !postado(c));
-  $('#s-lives').textContent = prontas.length; $('#s-cortes').textContent = C.length;
-  $('#s-post').textContent = postados.length; $('#s-fila').textContent = pendentes.length;
-  [['lives', prontas], ['cortes', C], ['post', postados], ['fila', pendentes]].forEach(([k, arr]) => {
-    const d = porDia(arr); spark('g-' + k, d); delta('d-' + k, d.reduce((a, b) => a + b, 0));
-  });
+  // totais vêm de contagens no banco; os gráficos usam só os cortes dos últimos 7 dias (R)
+  const vivos = R.filter(c => !c.descartado);
+  $('#s-lives').textContent = TOT.lives; $('#s-cortes').textContent = TOT.cortes;
+  $('#s-post').textContent = TOT.post; $('#s-fila').textContent = TOT.pend;
+  [['lives', porDia(L.filter(l => l.status === 'pronto'))],
+   ['cortes', porDia(R)],
+   ['post', porDia(vivos.filter(postado), 'postado_em')],        // pela data do post, não da criação
+   ['fila', porDia(vivos.filter(c => !postado(c)))],             // cortes novos da semana que ainda não foram postados
+  ].forEach(([k, d]) => { spark('g-' + k, d); delta('d-' + k, d.reduce((a, b) => a + b, 0), k === 'fila'); });
 
-  // últimos cortes
-  const ult = vivos.filter(c => c.video_url).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em)).slice(0, 4);
+  // últimos cortes (só os que ainda têm vídeo: depois de 7 dias o arquivo é apagado)
+  const ult = vivos.filter(c => !expirou(c)).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em)).slice(0, 4);
   const hu = ult.length ? ult.map(c => {
-    const l = L.find(x => x.id === c.live_id), n = C.filter(x => x.live_id === c.live_id).length, t = c.titulo || nomeLive(l);
+    const l = L.find(x => x.id === c.live_id), daLive = CL.some(x => x.live_id === c.live_id) ? CL : R;
+    const n = daLive.filter(x => x.live_id === c.live_id).length, t = c.titulo || nomeLive(l);
     return `<div class="uc"><a class="uc-v" href="/app/cortes?live=${c.live_id}"><video src="${esc(c.video_url)}#t=${Math.min(8, Math.floor((c.duracao || 16) / 2))}" preload="metadata" muted></video>${c.duracao ? `<span class="dur">${mmss(c.duracao)}</span>` : ''}</a>
       <div class="uc-t"><b title="${esc(t)}">${esc(t)}</b><small>${n} ${n == 1 ? 'corte' : 'cortes'} · ${quando(c.criado_em)}</small></div>
       <a class="btn sm out" href="/app/cortes?live=${c.live_id}">Ver cortes</a></div>`;
@@ -227,8 +233,8 @@ function render() {
   $('#ver-todas').hidden = outras.length <= 5;
   $('#ver-todas').firstChild.textContent = todas ? 'Ver menos' : 'Ver todas';
   const html = lista.length ? lista.map(l => {
-    const cs = C.filter(c => c.live_id === l.id), p = cs.filter(postado).length;
-    const capa = cs.find(c => c.video_url), ok = l.status === 'pronto', erro = l.status === 'erro';
+    const cs = CL.filter(c => c.live_id === l.id), p = cs.filter(postado).length;
+    const capa = cs.find(c => !expirou(c)), ok = l.status === 'pronto', erro = l.status === 'erro';
     const st = ok ? '<span class="st ok">Concluída</span>' : erro ? '<span class="st err">Erro</span>' : '<span class="st">Cancelada</span>';
     const sub = erro && l.erro ? `<span class="err" title="${esc(l.erro)}">${esc(l.erro.slice(0, 90))}</span>`
       : `${IC_CAL}<span>${quando(l.criado_em)}</span>${l.canal ? `<span>#${esc(l.canal)}</span>` : ''}`;
@@ -243,16 +249,45 @@ function render() {
   primeira = false;
 }
 
-async function carregar() {
-  const [g, l, c] = await Promise.all([
+// Os cortes não mudam a cada 4 s: só são buscados de novo quando alguma live muda (terminou, foi excluída...)
+// ou a cada 30 s (posts marcados em outra página). E nunca a tabela inteira:
+//  - totais: contagens feitas no banco
+//  - R: cortes criados ou postados nos últimos 7 dias (gráficos e "últimos cortes")
+//  - CL: cortes das lives que aparecem na lista (até 60)
+const COLS_R = 'id,live_id,n,titulo,duracao,video_url,expira_em,tiktok,shorts,reels,descartado,criado_em,postado_em';
+let chaveL = null, cortesEm = 0;
+async function carregarCortes() {
+  const desde = new Date(meiaNoite() - 6 * DIA).toISOString(), ids = L.map(l => l.id);
+  const conta = (t, f) => f(VZ.sb.from(t).select('id', { count: 'exact', head: true }));
+  const naoPost = q => q.eq('descartado', false).eq('tiktok', false).eq('shorts', false).eq('reels', false);
+  const res = await Promise.all([
+    conta('lives', q => q.eq('status', 'pronto')),
+    conta('cortes', q => q),
+    conta('cortes', q => q.eq('descartado', false).or('tiktok.is.true,shorts.is.true,reels.is.true')),
+    conta('cortes', naoPost),
+    todasLinhas(() => VZ.sb.from('cortes').select(COLS_R).or(`criado_em.gte."${desde}",postado_em.gte."${desde}"`).order('criado_em', { ascending: false }).order('id')),
+    ids.length ? todasLinhas(() => VZ.sb.from('cortes').select('id,live_id,video_url,expira_em,tiktok,shorts,reels').in('live_id', ids).order('id')) : { data: [] },
+  ]);
+  const err = res.find(r => r.error); if (err) { toast(VZ.erroPt(err.error)); return false; }
+  [TOT.lives, TOT.cortes, TOT.post, TOT.pend] = res.slice(0, 4).map(r => r.count || 0);
+  R = res[4].data; CL = res[5].data;
+  return true;
+}
+async function carregar(forcar) {
+  const [g, l] = await Promise.all([
     VZ.sb.from('gravacoes_chat').select('*').order('criado_em', { ascending: false }).limit(20),
     VZ.sb.from('lives').select('*').order('criado_em', { ascending: false }).limit(60),
-    VZ.sb.from('cortes').select('id,live_id,n,titulo,duracao,video_url,tiktok,shorts,reels,descartado,criado_em').order('n'),
   ]);
-  const err = g.error || l.error || c.error;
+  const err = g.error || l.error;
   if (err) return toast(VZ.erroPt(err));
-  G = g.data; L = l.data; C = c.data; render();
+  G = g.data; L = l.data;
+  const k = L.map(x => x.id + x.status + x.atualizado_em).join();
+  if (forcar || k !== chaveL || Date.now() - cortesEm > 30000) {
+    if (!await carregarCortes()) return;
+    chaveL = k; cortesEm = Date.now();
+  }
+  render();
 }
-PRONTO.then(() => { carregar(); setInterval(carregar, 4000); });
+PRONTO.then(() => { carregar(true); setInterval(carregar, 4000); });
 </script>
 {% endblock %}

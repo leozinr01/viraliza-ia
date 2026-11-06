@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611051821">
+<link rel="stylesheet" href="/assets/app.css?v=202611060922">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611051821"></script>
-<script src="/assets/viraliza.js?v=202611051821"></script>
+<script src="/assets/config.js?v=202611060922"></script>
+<script src="/assets/viraliza.js?v=202611060922"></script>
 </head>
 <body>
 <div class="shell">
@@ -19,8 +19,8 @@
   <a class="logo" href="/app"><img src="/assets/icone.svg" alt="" width="28" height="28"><span>viraliza</span></a>
   <nav class="nav">
     <span class="nav-h">Estúdio</span>
-    <a href="/app" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
-    <a href="/app/cortes" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="11" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><path d="M3 18h18M3 21h11"/></svg>Meus cortes</a>
+    <a href="/app" class=""><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
+    <a href="/app/cortes" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="11" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><path d="M3 18h18M3 21h11"/></svg>Meus cortes</a>
     <a href="/app/conexoes" class=""><svg viewBox="0 0 24 24"><path d="M9 15 15 9M10.5 6.5l1.8-1.8a4.2 4.2 0 0 1 6 6l-1.8 1.8M13.5 17.5l-1.8 1.8a4.2 4.2 0 0 1-6-6l1.8-1.8"/></svg>Conexões</a>
     <span class="nav-h">Suporte</span>
     <a href="/contato"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Fale com a gente</a>
@@ -70,6 +70,24 @@ const plataforma = u => /^https:\/\/(www\.|m\.)?twitch\.tv\/videos\/\d+/i.test(u
   : /^https:\/\/(www\.)?kick\.com\/([\w-]+\/videos|video)\/[\w-]+/i.test(u) ? 'kick' : null;
 const platTag = u => { const p = plataforma(u); return p ? `<span class="plat ${p}">${PLATS[p]}</span>` : ''; };
 const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const mmss = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
+const nomeLive = l => l ? (l.titulo || String(l.fonte || '').split(/[/=]/).pop() || 'Live') : 'Live';
+const postado = c => c.tiktok || c.shorts || c.reels;
+// os vídeos são apagados 7 dias depois de prontos; video_url continua preenchido, então olha expira_em também
+const venceu = t => !!t && new Date(t) < new Date();
+const expirou = c => !c.video_url || venceu(c.expira_em);
+// o Supabase devolve no máximo 1000 linhas por consulta; isso busca página por página até acabar.
+// mk() precisa montar a consulta de novo a cada chamada e ter uma ordem estável (ex.: terminar em .order('id')).
+async function todasLinhas(mk, pag = 1000) {
+  const out = [];
+  for (;;) {
+    const { data, error } = await mk().range(out.length, out.length + pag - 1);
+    if (error) return { data: null, error };
+    out.push(...data);
+    if (!data.length) return { data: out, error: null };
+  }
+}
 async function statusWorker() {
   const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();
   const on = data && data.visto_em && (Date.now() - new Date(data.visto_em)) < 90000;
@@ -92,8 +110,6 @@ const ID = new URLSearchParams(location.search).get('id');
 const REDES = { tiktok: 'TikTok', shorts: 'Shorts', reels: 'Reels' };
 let LIVE, CS = [], filtro = 'todos';
 const porN = n => CS.find(c => c.n == n);
-const postado = c => c.tiktok || c.shorts || c.reels;
-const expirou = t => t && new Date(t) < new Date();
 
 async function salvar(c, d) {
   Object.assign(c, d);
@@ -107,11 +123,12 @@ function filtrar() {
   });
   $('#cnt').textContent = `· ${CS.filter(postado).length} de ${CS.length} postados`;
 }
-document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); filtro = b.dataset.f; filtrar();
-});
+function mudarFiltro(f) {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.f === f)); filtro = f; filtrar();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => mudarFiltro(b.dataset.f));
 function card(c) {
-  const exp = expirou(c.expira_em) || !c.video_url;
+  const exp = expirou(c);
   return `<article class="ct ${c.descartado ? 'descartado' : ''}" data-n="${c.n}" id="c${c.n}">
   <div class="vid">${exp ? '<div class="expirado">Vídeo expirou<br>(apagado depois de 7 dias)</div>' : `<video src="${esc(c.video_url)}" controls preload="metadata"></video>`}
   <div class="tags"><span class="tag">#${c.n} · ${hms(c.inicio)}</span>${c.marcador ? '<span class="tag warn">⭐ #corte</span>' : `<span class="tag">🔥 ${(c.nota || 0).toFixed(1)}</span>`}</div></div>
@@ -219,9 +236,9 @@ PRONTO.then(async () => {
   if (!l.data) { $('#titulo').textContent = 'Live não encontrada'; return; }
   LIVE = l.data; CS = c.data;
   document.title = (LIVE.titulo || 'Live') + ' · Viraliza';
-  $('#titulo').textContent = LIVE.titulo || 'Live ' + LIVE.fonte.split(/[/=]/).pop();
+  $('#titulo').textContent = LIVE.titulo || 'Live ' + nomeLive(LIVE);
   $('#sub').textContent = [LIVE.canal, new Date(LIVE.criado_em).toLocaleString('pt-BR'), CS.length + ' cortes'].filter(Boolean).join(' · ');
-  if (LIVE.longo_url && !expirou(LIVE.expira_em)) {
+  if (LIVE.longo_url && !venceu(LIVE.expira_em)) {
     $('#yt').hidden = false; $('#ytv').src = LIVE.longo_url;
     $('#yt-dl').href = LIVE.longo_download_url; $('#yt-dl').innerHTML = ICON_DL + ' Baixar MP4';
     const yb = $('#yt-post'), sy = () => { yb.classList.toggle('on', LIVE.longo_postado); yb.textContent = LIVE.longo_postado ? '✓ Postado no YouTube' : 'Marcar como postado'; };
@@ -235,7 +252,9 @@ PRONTO.then(async () => {
   if (LIVE.expira_em) $('#aviso').textContent = 'Os vídeos ficam disponíveis até ' + new Date(LIVE.expira_em).toLocaleString('pt-BR') + '. Baixe antes disso.';
   $('#grid').innerHTML = CS.map(card).join(''); filtrar();
   const alvoN = location.hash.match(/^#c(\d+)$/), alvoEl = alvoN && $('#c' + alvoN[1]);
-  if (alvoEl) { alvoEl.hidden = false; alvoEl.scrollIntoView({ block: 'center' }); alvoEl.classList.add('foco'); }
+  // corte descartado não aparece em "Todos": abre a aba onde ele está, em vez de forçar ele visível
+  if (alvoEl && alvoEl.hidden) mudarFiltro(porN(alvoN[1]).descartado ? 'desc' : 'todos');
+  if (alvoEl) { alvoEl.scrollIntoView({ block: 'center' }); alvoEl.classList.add('foco'); }
   const con = await VZ.sb.from('conexoes').select('plataforma,conta_nome');
   CONS = con.data || [];
   carregarPubs();

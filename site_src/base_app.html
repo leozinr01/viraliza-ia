@@ -45,6 +45,24 @@ const plataforma = u => /^https:\/\/(www\.|m\.)?twitch\.tv\/videos\/\d+/i.test(u
   : /^https:\/\/(www\.)?kick\.com\/([\w-]+\/videos|video)\/[\w-]+/i.test(u) ? 'kick' : null;
 const platTag = u => { const p = plataforma(u); return p ? `<span class="plat ${p}">${PLATS[p]}</span>` : ''; };
 const hms = s => { s = Math.floor(s || 0); return Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const mmss = s => { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const quando = d => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
+const nomeLive = l => l ? (l.titulo || String(l.fonte || '').split(/[/=]/).pop() || 'Live') : 'Live';
+const postado = c => c.tiktok || c.shorts || c.reels;
+// os vídeos são apagados 7 dias depois de prontos; video_url continua preenchido, então olha expira_em também
+const venceu = t => !!t && new Date(t) < new Date();
+const expirou = c => !c.video_url || venceu(c.expira_em);
+// o Supabase devolve no máximo 1000 linhas por consulta; isso busca página por página até acabar.
+// mk() precisa montar a consulta de novo a cada chamada e ter uma ordem estável (ex.: terminar em .order('id')).
+async function todasLinhas(mk, pag = 1000) {
+  const out = [];
+  for (;;) {
+    const { data, error } = await mk().range(out.length, out.length + pag - 1);
+    if (error) return { data: null, error };
+    out.push(...data);
+    if (!data.length) return { data: out, error: null };
+  }
+}
 async function statusWorker() {
   const { data } = await VZ.sb.from('worker').select('visto_em').eq('id', 1).maybeSingle();
   const on = data && data.visto_em && (Date.now() - new Date(data.visto_em)) < 90000;

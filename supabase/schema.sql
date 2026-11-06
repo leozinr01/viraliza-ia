@@ -239,3 +239,30 @@ create policy pub_ins on public.publicacoes for insert to authenticated
 create policy pub_del on public.publicacoes for delete to authenticated
   using (user_id = (select auth.uid()) and status in ('fila','erro'));
 revoke update on public.publicacoes from anon, authenticated;
+
+-- ---------- data do post dos cortes (migracao_postado_em.sql)
+alter table public.cortes add column if not exists postado_em timestamptz;
+
+-- preenchido sozinho: vira now() quando o corte passa de "nenhuma rede" para "alguma rede",
+-- e volta a null se desmarcar todas. Vale tanto pro site quanto pro notebook.
+create or replace function public.marcar_postado() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.tiktok or new.shorts or new.reels then
+    if tg_op = 'INSERT' or not (old.tiktok or old.shorts or old.reels) then new.postado_em := now(); end if;
+  else
+    new.postado_em := null;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists t_cortes_postado on public.cortes;
+create trigger t_cortes_postado before insert or update of tiktok, shorts, reels on public.cortes
+  for each row execute function public.marcar_postado();
+
+-- o painel busca os cortes dos últimos 7 dias
+create index if not exists cortes_user_criado_idx on public.cortes (user_id, criado_em desc);
+create index if not exists cortes_user_postado_idx on public.cortes (user_id, postado_em desc) where postado_em is not null;
+
+-- cortes que já estavam postados não têm a data do post; ficam fora do gráfico de 7 dias
+-- (continuam contando no total de "Postados").
