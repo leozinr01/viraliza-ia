@@ -94,7 +94,7 @@
 
   document.querySelectorAll('[data-google]').forEach(b => b.onclick = async () => {
     b.disabled = true; alerta.hidden = true;
-    const { error } = await VZ.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + destino } });
+    const { error } = await VZ.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + destino, queryParams: { prompt: 'select_account' } } });
     if (error) { b.disabled = false; erro(/provider is not enabled|unsupported provider/i.test(error.message) ? 'O login com Google ainda não foi ativado. Use e-mail e senha por enquanto.' : VZ.erroPt(error)); }
   });
 

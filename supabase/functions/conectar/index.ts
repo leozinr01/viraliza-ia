@@ -29,11 +29,15 @@ async function usuario(jwt: string) {
   return r.ok ? await r.json() : null;
 }
 const CALLBACK = `${SB_URL}/functions/v1/conectar`;
+// Google: volta direto pra página Conexões do site (domínio do Viraliza, exigido na verificação do Google).
+// TikTok e Instagram ainda voltam por esta função (GET abaixo), que repassa pro site.
+const VOLTA_NO_SITE = new Set(["youtube"]);
+const volta = (p: string, site: string) => (VOLTA_NO_SITE.has(p) ? `${site}/app/conexoes` : CALLBACK);
 // sites que podem pedir conexão (o usuário volta pra ele no fim)
 const SITES = [...env("SITE_URL").split(","), "http://localhost:8080"].map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
 
 type Conta = { conta_id: string; conta_nome: string; conta_foto: string | null; access_token: string; refresh_token: string | null; expira_em: string | null };
-type Rede = { auth: string; params: () => Record<string, string>; trocar: (code: string) => Promise<Conta> };
+type Rede = { auth: string; params: () => Record<string, string>; trocar: (code: string, redirect_uri: string) => Promise<Conta> };
 
 const emSegundos = (s?: number) => (s ? new Date(Date.now() + s * 1000).toISOString() : null);
 
@@ -49,13 +53,14 @@ const REDES: Record<string, Rede> = {
   youtube: {
     auth: "https://accounts.google.com/o/oauth2/v2/auth",
     params: () => ({
-      client_id: env("GOOGLE_CLIENT_ID"), response_type: "code", access_type: "offline", prompt: "consent",
+      // select_account: sempre pergunta qual conta Google (cada pessoa conecta o canal dela)
+      client_id: env("GOOGLE_CLIENT_ID"), response_type: "code", access_type: "offline", prompt: "select_account consent",
       scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
     }),
-    async trocar(code) {
+    async trocar(code, redirect_uri) {
       const tk = await json(await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
-        body: new URLSearchParams({ code, client_id: env("GOOGLE_CLIENT_ID"), client_secret: env("GOOGLE_CLIENT_SECRET"), redirect_uri: CALLBACK, grant_type: "authorization_code" }),
+        body: new URLSearchParams({ code, client_id: env("GOOGLE_CLIENT_ID"), client_secret: env("GOOGLE_CLIENT_SECRET"), redirect_uri, grant_type: "authorization_code" }),
       }), "Google");
       const ch = await json(await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
         headers: { Authorization: `Bearer ${tk.access_token}` },
@@ -69,10 +74,10 @@ const REDES: Record<string, Rede> = {
   tiktok: {
     auth: "https://www.tiktok.com/v2/auth/authorize/",
     params: () => ({ client_key: env("TIKTOK_CLIENT_KEY"), response_type: "code", scope: "user.info.basic,video.upload,video.publish" }),
-    async trocar(code) {
+    async trocar(code, redirect_uri) {
       const tk = await json(await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
         method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ client_key: env("TIKTOK_CLIENT_KEY"), client_secret: env("TIKTOK_CLIENT_SECRET"), code, grant_type: "authorization_code", redirect_uri: CALLBACK }),
+        body: new URLSearchParams({ client_key: env("TIKTOK_CLIENT_KEY"), client_secret: env("TIKTOK_CLIENT_SECRET"), code, grant_type: "authorization_code", redirect_uri }),
       }), "TikTok");
       if (!tk.access_token) throw new Error(`TikTok: ${tk.error_description || tk.error || "não autorizou"}`);
       const u = await json(await fetch("https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url", {
@@ -86,10 +91,10 @@ const REDES: Record<string, Rede> = {
   instagram: {
     auth: "https://www.instagram.com/oauth/authorize",
     params: () => ({ client_id: env("INSTAGRAM_APP_ID"), response_type: "code", scope: "instagram_business_basic,instagram_business_content_publish" }),
-    async trocar(code) {
+    async trocar(code, redirect_uri) {
       const curto = await json(await fetch("https://api.instagram.com/oauth/access_token", {
         method: "POST",
-        body: new URLSearchParams({ client_id: env("INSTAGRAM_APP_ID"), client_secret: env("INSTAGRAM_APP_SECRET"), grant_type: "authorization_code", redirect_uri: CALLBACK, code }),
+        body: new URLSearchParams({ client_id: env("INSTAGRAM_APP_ID"), client_secret: env("INSTAGRAM_APP_SECRET"), grant_type: "authorization_code", redirect_uri, code }),
       }), "Instagram");
       const t0 = curto.access_token ?? curto.data?.[0]?.access_token;
       // troca pela chave de 60 dias (o notebook renova antes de vencer)
@@ -144,7 +149,7 @@ Deno.serve(async (req) => {
       if (!st) return resposta({ erro: "Link de conexão inválido ou expirado. Tente de novo." }, 400);
       if (st.u !== user.id) return resposta({ erro: "Essa conexão foi iniciada por outra conta do Viraliza. Clique em Conectar de novo.", p: st.p }, 403);
       try {
-        const conta = await REDES[st.p].trocar(String(code).replace(/#_$/, ""));
+        const conta = await REDES[st.p].trocar(String(code).replace(/#_$/, ""), volta(st.p, st.s));
         const con = await upsert("conexoes", "user_id,plataforma", {
           user_id: st.u, plataforma: st.p, conta_id: conta.conta_id, conta_nome: conta.conta_nome, conta_foto: conta.conta_foto,
         });
@@ -164,7 +169,7 @@ Deno.serve(async (req) => {
     const origem = (req.headers.get("Origin") || "").replace(/\/$/, "");
     const site = SITES.includes(origem) ? origem : SITES[0];
     const state = await assinar({ u: user.id, p: plataforma, s: site, exp: Date.now() + 15 * 60_000, n: crypto.randomUUID() });
-    return resposta({ url: `${rede.auth}?${new URLSearchParams({ ...rede.params(), redirect_uri: CALLBACK, state })}` });
+    return resposta({ url: `${rede.auth}?${new URLSearchParams({ ...rede.params(), redirect_uri: volta(plataforma, site), state })}` });
   }
 
   // 2) a rede devolve o usuário pra cá: só repassa pro site, que termina no passo 3 com o login

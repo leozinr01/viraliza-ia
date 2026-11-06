@@ -91,6 +91,12 @@ PRONTO.then(() => {
   if (q.toString()) history.replaceState(null, '', location.pathname);  // tira code/state da barra de endereço
   if (q.get('ok')) toast((INFO[q.get('ok')] || {}).nome + ' conectado!');
   if (q.get('erro')) { if (INFO[q.get('p')]) ERRO = { p: q.get('p'), msg: q.get('erro') }; else toast(q.get('erro')); }
+  // o Google volta direto pra cá; se a pessoa cancelou, vem ?error=...&state=...
+  if (q.get('error') && q.get('state')) {
+    let p = 'youtube';
+    try { p = JSON.parse(atob(q.get('state').split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).p || p; } catch (e) {}
+    ERRO = { p, msg: q.get('error') === 'access_denied' ? 'Você cancelou a conexão.' : 'O Google recusou a conexão (' + q.get('error') + '). Tente de novo.' };
+  }
   render();
   if (q.get('code') && q.get('state')) finalizar(q.get('code'), q.get('state')); else carregar();
 });
