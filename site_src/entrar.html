@@ -92,11 +92,43 @@
     document.getElementById('confirme').hidden = false;
   };
 
+  // Login com Google direto (sem passar pelo domínio do Supabase): o Google devolve um id_token
+  // pra valoriza.online/entrar e a gente entrega ele pro Supabase com signInWithIdToken.
+  const aleatorio = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), x => x.toString(16).padStart(2, '0')).join('');
+  const sha256 = async t => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t))), x => x.toString(16).padStart(2, '0')).join('');
+  const guardar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} };
+  const ler = k => { try { return sessionStorage.getItem(k); } catch { return null; } };
+
   document.querySelectorAll('[data-google]').forEach(b => b.onclick = async () => {
     b.disabled = true; alerta.hidden = true;
-    const { error } = await VZ.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + destino, queryParams: { prompt: 'select_account' } } });
-    if (error) { b.disabled = false; erro(/provider is not enabled|unsupported provider/i.test(error.message) ? 'O login com Google ainda não foi ativado. Use e-mail e senha por enquanto.' : VZ.erroPt(error)); }
+    const nonce = aleatorio(), state = aleatorio();
+    guardar('vz_g_nonce', nonce); guardar('vz_g_state', state); guardar('vz_g_destino', destino);
+    location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+      client_id: VIRALIZA_CONFIG.googleClientId, redirect_uri: location.origin + '/entrar',
+      response_type: 'id_token', scope: 'openid email profile', prompt: 'select_account',
+      nonce: await sha256(nonce), state,
+    }));
   });
+
+  // voltou do Google?
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.has('id_token') || h.has('error')) {
+    history.replaceState(null, '', location.pathname + location.search);
+    const nonce = ler('vz_g_nonce'), state = ler('vz_g_state'), volta = ler('vz_g_destino') || destino;
+    ['vz_g_nonce', 'vz_g_state', 'vz_g_destino'].forEach(k => guardar(k, null));
+    if (h.has('error')) {
+      if (h.get('error') !== 'access_denied') erro('Não deu pra entrar com o Google. Tenta de novo.');
+    } else if (!nonce || h.get('state') !== state) {
+      erro('O login com Google expirou. Tenta de novo.');
+    } else {
+      document.querySelectorAll('[data-google]').forEach(b => b.disabled = true);
+      VZ.sb.auth.signInWithIdToken({ provider: 'google', token: h.get('id_token'), nonce }).then(({ error }) => {
+        if (!error) return location.replace(volta.startsWith('/app') ? volta : '/app');
+        document.querySelectorAll('[data-google]').forEach(b => b.disabled = false);
+        erro(/provider is not enabled|unsupported provider/i.test(error.message) ? 'O login com Google ainda não foi ativado. Use e-mail e senha por enquanto.' : VZ.erroPt(error));
+      });
+    }
+  }
 
   document.getElementById('esqueci').onclick = async () => {
     const email = document.querySelector('#f-entrar [name=email]').value.trim();
