@@ -153,6 +153,7 @@ details.log pre{background:#050507;border-radius:8px;padding:10px;font-size:12px
 .dot-ok{width:6px;height:6px;border-radius:50%;background:var(--ok)}
 .con .hint{margin:0}
 .con-acts{display:flex;gap:8px;margin-top:auto}.con-acts .btn{flex:1}
+.con-erro{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:8px;border:1px solid var(--err-t);color:var(--err-t);font-size:13px;line-height:1.45;overflow-wrap:anywhere}.con-erro span{flex:1}.con-erro .icon-btn{flex:none;width:24px;height:24px;color:inherit}
 .nota-cons{margin-top:20px;max-width:700px}.nota-cons a{color:var(--brand)}
 
 /* página da live */

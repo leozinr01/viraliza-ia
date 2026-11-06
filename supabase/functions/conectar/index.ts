@@ -1,10 +1,14 @@
 // Viraliza · conecta a conta do usuário no YouTube, TikTok ou Instagram (OAuth).
 //
-//  POST  { plataforma }  (com o login do Viraliza)  -> { url }  pra onde mandar o navegador
-//  GET   ?code=...&state=...  (a rede volta pra cá) -> troca o código pelas chaves, salva e volta pro painel
+//  1. POST  { plataforma }     (com o login do Viraliza) -> { url } pra onde mandar o navegador
+//  2. GET   ?code=...&state=...  (a rede volta pra cá)   -> repassa code e state pra página Conexões do site
+//  3. POST  { code, state }     (com o login do Viraliza) -> confere que é o MESMO usuário que começou,
+//                                                           troca o código pelas chaves e salva
+// A troca acontece no passo 3, e não no 2, porque a volta da rede não traz o login: sem essa conferência,
+// alguém poderia mandar o próprio link de conexão pra outra pessoa e ligar a conta dela no Viraliza dele.
 //
 // Deploy:  npx supabase functions deploy conectar --no-verify-jwt
-// (sem verificação automática porque a volta da rede não traz o login; o POST verifica o login aqui dentro)
+// (sem verificação automática porque a volta da rede não traz o login; os POSTs verificam o login aqui dentro)
 const env = (k: string) => Deno.env.get(k) ?? "";
 const SB_URL = env("SUPABASE_URL");
 // chave secreta do projeto (formato novo sb_secret_..., ou a service_role antiga)
@@ -101,18 +105,24 @@ const REDES: Record<string, Rede> = {
 
 // ---------- "state": prova assinada de quem pediu a conexão (evita alguém conectar a conta dele em outro usuário)
 const b64 = (b: ArrayBuffer | Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const chave = () => crypto.subtle.importKey("raw", new TextEncoder().encode(env("ESTADO_SEGREDO") || SB_KEY), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+const de64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+const txt = (s: string) => new TextEncoder().encode(s);
+const chave = () => crypto.subtle.importKey("raw", txt(env("ESTADO_SEGREDO") || SB_KEY), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 async function assinar(dados: object) {
-  const corpo = b64(new TextEncoder().encode(JSON.stringify(dados)));
-  return `${corpo}.${b64(await crypto.subtle.sign("HMAC", await chave(), new TextEncoder().encode(corpo)))}`;
+  const corpo = b64(txt(JSON.stringify(dados)));
+  return `${corpo}.${b64(await crypto.subtle.sign("HMAC", await chave(), txt(corpo)))}`;
 }
-async function conferir(state: string) {
-  const [corpo, sig] = state.split(".");
-  if (!corpo || !sig) return null;
-  const esperado = b64(await crypto.subtle.sign("HMAC", await chave(), new TextEncoder().encode(corpo)));
-  if (esperado !== sig) return null;
-  const d = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(corpo.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0))));
-  return d.exp > Date.now() ? d : null;
+type Estado = { u: string; p: string; s: string; exp: number };
+async function conferir(state: string): Promise<Estado | null> {
+  try {  // state vem de fora: qualquer coisa malformada vira "inválido", não erro 500
+    const [corpo, sig] = state.split(".");
+    if (!corpo || !sig) return null;
+    if (!await crypto.subtle.verify("HMAC", await chave(), de64(sig), txt(corpo))) return null;  // comparação em tempo constante
+    const d = JSON.parse(new TextDecoder().decode(de64(corpo)));
+    return d.exp > Date.now() && REDES[d.p] ? d : null;
+  } catch {
+    return null;
+  }
 }
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info", "Access-Control-Allow-Methods": "POST, OPTIONS" };
@@ -122,12 +132,33 @@ const voltar = (site: string, q: Record<string, string>) => Response.redirect(`$
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  // 1) o painel pede a URL de login da rede
   if (req.method === "POST") {
     const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer /, "");
     const user = jwt ? await usuario(jwt) : null;
     if (!user?.id) return resposta({ erro: "Faça login de novo." }, 401);
-    const { plataforma } = await req.json().catch(() => ({}));
+    const { plataforma, code, state: stRecebido } = await req.json().catch(() => ({}));
+
+    // 3) o site devolve o código da rede, já com o login de quem está na tela
+    if (code) {
+      const st = await conferir(stRecebido || "");
+      if (!st) return resposta({ erro: "Link de conexão inválido ou expirado. Tente de novo." }, 400);
+      if (st.u !== user.id) return resposta({ erro: "Essa conexão foi iniciada por outra conta do Viraliza. Clique em Conectar de novo.", p: st.p }, 403);
+      try {
+        const conta = await REDES[st.p].trocar(String(code).replace(/#_$/, ""));
+        const con = await upsert("conexoes", "user_id,plataforma", {
+          user_id: st.u, plataforma: st.p, conta_id: conta.conta_id, conta_nome: conta.conta_nome, conta_foto: conta.conta_foto,
+        });
+        await upsert("conexoes_tokens", "conexao_id", {
+          conexao_id: con.id, access_token: conta.access_token, refresh_token: conta.refresh_token, expira_em: conta.expira_em,
+        });
+        return resposta({ ok: st.p, conta: conta.conta_nome });
+      } catch (e) {
+        console.error(st.p, e);
+        return resposta({ erro: String((e as Error).message || e).slice(0, 300), p: st.p }, 400);
+      }
+    }
+
+    // 1) o painel pede a URL de login da rede
     const rede = REDES[plataforma];
     if (!rede) return resposta({ erro: "Plataforma inválida." }, 400);
     const origem = (req.headers.get("Origin") || "").replace(/\/$/, "");
@@ -136,25 +167,13 @@ Deno.serve(async (req) => {
     return resposta({ url: `${rede.auth}?${new URLSearchParams({ ...rede.params(), redirect_uri: CALLBACK, state })}` });
   }
 
-  // 2) a rede devolve o usuário pra cá
+  // 2) a rede devolve o usuário pra cá: só repassa pro site, que termina no passo 3 com o login
   if (req.method === "GET") {
-    const q = new URL(req.url).searchParams;
-    const st = await conferir(q.get("state") || "");
+    const q = new URL(req.url).searchParams, state = q.get("state") || "";
+    const st = await conferir(state);
     if (!st) return new Response("Link de conexão inválido ou expirado. Volte ao Viraliza e tente de novo.", { status: 400 });
-    if (q.get("error")) return voltar(st.s, { erro: "Você cancelou a conexão.", p: st.p });
-    try {
-      const conta = await REDES[st.p].trocar((q.get("code") || "").replace(/#_$/, ""));
-      const con = await upsert("conexoes", "user_id,plataforma", {
-        user_id: st.u, plataforma: st.p, conta_id: conta.conta_id, conta_nome: conta.conta_nome, conta_foto: conta.conta_foto,
-      });
-      await upsert("conexoes_tokens", "conexao_id", {
-        conexao_id: con.id, access_token: conta.access_token, refresh_token: conta.refresh_token, expira_em: conta.expira_em,
-      });
-      return voltar(st.s, { ok: st.p });
-    } catch (e) {
-      console.error(st.p, e);
-      return voltar(st.s, { erro: String((e as Error).message || e).slice(0, 300), p: st.p });
-    }
+    if (q.get("error") || !q.get("code")) return voltar(st.s, { erro: "Você cancelou a conexão.", p: st.p });
+    return voltar(st.s, { code: q.get("code")!, state });
   }
   return resposta({ erro: "Método não suportado." }, 405);
 });

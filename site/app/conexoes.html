@@ -8,10 +8,10 @@
 <link rel="icon" href="/assets/icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=202611060922">
+<link rel="stylesheet" href="/assets/app.css?v=202611060933">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
-<script src="/assets/config.js?v=202611060922"></script>
-<script src="/assets/viraliza.js?v=202611060922"></script>
+<script src="/assets/config.js?v=202611060933"></script>
+<script src="/assets/viraliza.js?v=202611060933"></script>
 </head>
 <body>
 <div class="shell">
@@ -99,23 +99,43 @@ const LOGO = {
   tiktok: '<svg viewBox="0 0 24 24"><path d="M14 4v10.5a3.5 3.5 0 1 1-3-3.46M14 4c.4 2.3 2 3.8 4.5 4" stroke="#fff" stroke-width="2.2"/></svg>',
   instagram: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.6" stroke="#fff" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1" fill="#fff" stroke="none"/></svg>',
 };
-let CON = [];
+let CON = [], ERRO = null, FINALIZANDO = null;  // ERRO = { p, msg }: fica no cartão até a pessoa fechar ou tentar de novo
 
+// lê a mensagem de erro que a função "conectar" devolveu
+// devolve { msg, p } (p = rede do erro, quando a função diz)
+async function lerErro(error, data) {
+  let d = data || {};
+  if (error && error.context && typeof error.context.json === 'function') {
+    d = await error.context.json().catch(() => ({}));
+    if (error.context.status === 404) return { msg: 'O serviço de conexão ainda não foi publicado no servidor.' };
+  } else if (error) return { msg: 'Sem resposta do servidor. Confira sua internet.' };
+  return { msg: d.erro || d.message || '', p: d.p };
+}
 async function conectar(p, b) {
-  b.disabled = true; b.textContent = 'Abrindo...';
+  ERRO = null; render();
+  b = document.querySelector(`[data-con="${p}"]`) || b;
+  if (b) { b.disabled = true; b.textContent = 'Abrindo...'; }
   const { data, error } = await VZ.sb.functions.invoke('conectar', { body: { plataforma: p } });
   if (error || !data || !data.url) {
-    b.disabled = false; b.textContent = 'Conectar';
-    let msg = (data && data.erro) || '';
-    if (error && error.context && typeof error.context.json === 'function') {
-      const st = error.context.status;
-      msg = await error.context.json().then(d => d.erro || d.message || '').catch(() => '');
-      if (st === 404) msg = 'O serviço de conexão ainda não foi publicado no servidor.';
-    } else if (error) msg = 'Sem resposta do servidor. Confira sua internet.';
+    const { msg } = await lerErro(error, data);
     console.error('conectar', p, error || data);
-    return toast('Não deu pra abrir a conexão' + (msg ? ': ' + msg : '. Tente de novo.'));
+    ERRO = { p, msg: 'Não deu pra abrir a conexão' + (msg ? ': ' + msg : '. Tente de novo.') };
+    return render();
   }
   location.href = data.url;
+}
+// a rede voltou com ?code=&state=: termina a conexão com o login de quem está na tela
+async function finalizar(code, state) {
+  FINALIZANDO = true; render();
+  const { data, error } = await VZ.sb.functions.invoke('conectar', { body: { code, state } });
+  FINALIZANDO = null;
+  if (error || !data || !data.ok) {
+    const { msg, p } = await lerErro(error, data);
+    console.error('finalizar conexão', error || data);
+    if (p && INFO[p]) ERRO = { p, msg: msg || 'Não deu pra conectar. Tente de novo.' };
+    else toast(msg || 'Não deu pra conectar. Tente de novo.');
+  } else toast((INFO[data.ok] || {}).nome + ' conectado!');
+  carregar();
 }
 async function desconectar(id, nome) {
   if (!confirm('Desconectar ' + nome + '? Você pode conectar de novo quando quiser.')) return;
@@ -125,15 +145,16 @@ async function desconectar(id, nome) {
 }
 function render() {
   $('#cons').innerHTML = Object.entries(INFO).map(([p, i]) => {
-    const c = CON.find(x => x.plataforma === p);
+    const c = CON.find(x => x.plataforma === p), e = ERRO && ERRO.p === p ? ERRO.msg : '';
     return `<section class="panel con ${c ? 'ligada' : ''}">
       <div class="con-h"><span class="con-logo ${p}">${LOGO[p]}</span><div><h2>${i.nome}</h2><p class="meta">${i.desc}</p></div></div>
       ${c ? `<div class="con-conta">${c.conta_foto ? `<img src="${esc(c.conta_foto)}" alt="" referrerpolicy="no-referrer">` : `<span class="av">${esc((c.conta_nome || '?').charAt(0).toUpperCase())}</span>`}
         <div><b>${esc(c.conta_nome || i.nome)}</b><small><i class="dot-ok"></i>Conectada em ${new Date(c.criado_em).toLocaleDateString('pt-BR')}</small></div></div>`
         : `<div class="con-conta vazia">Nenhuma conta conectada</div>`}
+      ${e ? `<div class="con-erro" role="alert"><span>${esc(e)}</span><button class="icon-btn" onclick="ERRO = null; render()" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>` : ''}
       <p class="hint">${i.nota}</p>
-      <div class="con-acts">${c ? `<button class="btn sec" onclick="desconectar('${c.id}','${esc(i.nome)}')">Desconectar</button><button class="btn sec" onclick="conectar('${p}', this)">Trocar conta</button>`
-        : `<button class="btn" onclick="conectar('${p}', this)">Conectar</button>`}</div>
+      <div class="con-acts">${c ? `<button class="btn sec" onclick="desconectar('${c.id}','${esc(i.nome)}')">Desconectar</button><button class="btn sec" data-con="${p}" onclick="conectar('${p}', this)"${FINALIZANDO ? ' disabled' : ''}>Trocar conta</button>`
+        : `<button class="btn" data-con="${p}" onclick="conectar('${p}', this)"${FINALIZANDO ? ' disabled' : ''}>${FINALIZANDO ? 'Conectando...' : 'Conectar'}</button>`}</div>
     </section>`;
   }).join('');
 }
@@ -144,10 +165,11 @@ async function carregar() {
 }
 PRONTO.then(() => {
   const q = new URLSearchParams(location.search);
+  if (q.toString()) history.replaceState(null, '', location.pathname);  // tira code/state da barra de endereço
   if (q.get('ok')) toast((INFO[q.get('ok')] || {}).nome + ' conectado!');
-  if (q.get('erro')) toast(q.get('erro'));
-  if (q.toString()) history.replaceState(null, '', location.pathname);
-  render(); carregar();
+  if (q.get('erro')) { if (INFO[q.get('p')]) ERRO = { p: q.get('p'), msg: q.get('erro') }; else toast(q.get('erro')); }
+  render();
+  if (q.get('code') && q.get('state')) finalizar(q.get('code'), q.get('state')); else carregar();
 });
 </script>
 
